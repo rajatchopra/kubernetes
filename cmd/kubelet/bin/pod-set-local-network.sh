@@ -26,7 +26,7 @@ if [ "$docker_id" != "" ]; then
 	nsenter -n -t $pid -- ip link set dev eth0 addr $mac
 	nsenter -n -t $pid -- ip addr add ${ip}/24 dev eth0
 	nsenter -n -t $pid -- ip link set dev eth0 up
-	nsenter -n -t $pid -- ip route set default via 10.246.1.1 dev eth0
+	nsenter -n -t $pid -- ip route replace default via 10.246.1.1 dev eth0
 fi
 
 ## add flows
