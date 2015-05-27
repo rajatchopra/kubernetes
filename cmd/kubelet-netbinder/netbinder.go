@@ -60,7 +60,7 @@ func newVnidInfo(vnid string) (*vnidInfo) {
 
 func init() {
 	flag.Var(&etcdServerList, "etcd_servers", "List of etcd servers to watch (http://ip:port), comma separated (optional).")
-	exec.New().Command("ovs-vsctl", "add-port", "tap1", "obr0", "--", "set", "Interface", "tap1", "ofport_request=3").CombinedOutput()
+	exec.New().Command("ovs-vsctl", "add-port", "obr0", "tap1", "--", "set", "Interface", "tap1", "ofport_request=3", "type=internal").CombinedOutput()
 	exec.New().Command("ip", "addr", "add", "10.246.1.1/16", "dev", "tap1").CombinedOutput()
 	exec.New().Command("ip", "link", "set", "dev", "tap1", "up").CombinedOutput()
 	exec.New().Command("ovs-ofctl", "del-flows", "-O", "OpenFlow13", "obr0").CombinedOutput()
@@ -191,7 +191,8 @@ func WatchLoop(w watch.Interface, netinfo *vnidInfo) {
 		case event, ok := <-w.ResultChan():
 			fmt.Printf("Got an event : %v\n", event)
 			if !ok {
-				continue
+				go watchVnid(netinfo)
+				return
 			}
 			handleVnidEvent(event, netinfo)
 		}
