@@ -369,6 +369,10 @@
 			"Rev": "afde71eb1740fd763ab9450e1f700ba0e53c36d0"
 		},
 		{
+			"ImportPath": "github.com/juju/ratelimit",
+			"Rev": "772f5c38e468398c4511514f4f6aa9a4185bc0a0"
+		},
+		{
 			"ImportPath": "github.com/kardianos/osext",
 			"Rev": "8fef92e41e22a70e700a96b29f066cda30ea24ef"
 		},
@@ -383,7 +387,7 @@
 		},
 		{
 			"ImportPath": "github.com/mesos/mesos-go/auth",
-			"Rev": "4b1767c0dfc51020e01f35da5b38472f40ce572a"
+			"Rev": "6440c09c9d8a1b365f3c3e9b2297dd856abd017c"
 		},
 		{
 			"ImportPath": "github.com/mesos/mesos-go/detector",

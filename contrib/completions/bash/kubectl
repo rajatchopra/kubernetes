@@ -321,9 +321,9 @@ _kubectl_create()
     must_have_one_noun=()
 }
 
-_kubectl_update()
+_kubectl_replace()
 {
-    last_command="kubectl_update"
+    last_command="kubectl_replace"
     commands=()
 
     flags=()
@@ -342,13 +342,32 @@ _kubectl_update()
     flags+=("--grace-period=")
     flags+=("--help")
     flags+=("-h")
-    flags+=("--patch=")
     flags+=("--timeout=")
 
     must_have_one_flag=()
     must_have_one_flag+=("--filename=")
     must_have_one_flag+=("-f")
+    must_have_one_noun=()
+}
+
+_kubectl_patch()
+{
+    last_command="kubectl_patch"
+    commands=()
+
+    flags=()
+    two_word_flags=()
+    flags_with_completion=()
+    flags_completion=()
+
+    flags+=("--help")
+    flags+=("-h")
+    flags+=("--patch=")
+    two_word_flags+=("-p")
+
+    must_have_one_flag=()
     must_have_one_flag+=("--patch=")
+    must_have_one_flag+=("-p")
     must_have_one_noun=()
 }
 
@@ -409,6 +428,8 @@ _kubectl_logs()
     flags_with_completion=()
     flags_completion=()
 
+    flags+=("--container=")
+    two_word_flags+=("-c")
     flags+=("--follow")
     flags+=("-f")
     flags+=("--help")
@@ -906,7 +927,8 @@ _kubectl()
     commands+=("get")
     commands+=("describe")
     commands+=("create")
-    commands+=("update")
+    commands+=("replace")
+    commands+=("patch")
     commands+=("delete")
     commands+=("namespace")
     commands+=("logs")

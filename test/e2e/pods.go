@@ -35,22 +35,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// createNamespaceIfDoesNotExist ensures that the namespace with specified name exists, or returns an error
-func createNamespaceIfDoesNotExist(c *client.Client, name string) (*api.Namespace, error) {
-	namespace, err := c.Namespaces().Get(name)
-	if err != nil {
-		namespace, err = c.Namespaces().Create(&api.Namespace{ObjectMeta: api.ObjectMeta{Name: name}})
-	}
-	return namespace, err
-}
-
-func runLivenessTest(c *client.Client, podDescr *api.Pod, expectRestart bool) {
-	ns := "e2e-test-" + string(util.NewUUID())
-	_, err := createNamespaceIfDoesNotExist(c, ns)
-	expectNoError(err, fmt.Sprintf("creating namespace %s", ns))
-
+func runLivenessTest(c *client.Client, ns string, podDescr *api.Pod, expectRestart bool) {
 	By(fmt.Sprintf("Creating pod %s in namespace %s", podDescr.Name, ns))
-	_, err = c.Pods(ns).Create(podDescr)
+	_, err := c.Pods(ns).Create(podDescr)
 	expectNoError(err, fmt.Sprintf("creating pod %s", podDescr.Name))
 
 	// At the end of the test, clean up by removing the pod.
@@ -95,15 +82,11 @@ func runLivenessTest(c *client.Client, podDescr *api.Pod, expectRestart bool) {
 }
 
 // testHostIP tests that a pod gets a host IP
-func testHostIP(c *client.Client, pod *api.Pod) {
-	ns := "e2e-test-" + string(util.NewUUID())
-	_, err := createNamespaceIfDoesNotExist(c, ns)
-	expectNoError(err, fmt.Sprintf("creating namespace %s", ns))
-
+func testHostIP(c *client.Client, ns string, pod *api.Pod) {
 	podClient := c.Pods(ns)
 	By("creating pod")
 	defer podClient.Delete(pod.Name, nil)
-	_, err = podClient.Create(pod)
+	_, err := podClient.Create(pod)
 	if err != nil {
 		Fail(fmt.Sprintf("Failed to create pod: %v", err))
 	}
@@ -132,18 +115,11 @@ func testHostIP(c *client.Client, pod *api.Pod) {
 }
 
 var _ = Describe("Pods", func() {
-	var c *client.Client
-	// TODO convert this to use the NewFramework(...)
-
-	BeforeEach(func() {
-		var err error
-		c, err = loadClient()
-		expectNoError(err)
-	})
+	framework := NewFramework("pods")
 
 	PIt("should get a host IP", func() {
 		name := "pod-hostip-" + string(util.NewUUID())
-		testHostIP(c, &api.Pod{
+		testHostIP(framework.Client, framework.Namespace.Name, &api.Pod{
 			ObjectMeta: api.ObjectMeta{
 				Name: name,
 			},
@@ -157,8 +133,9 @@ var _ = Describe("Pods", func() {
 			},
 		})
 	})
+
 	It("should be schedule with cpu and memory limits", func() {
-		podClient := c.Pods(api.NamespaceDefault)
+		podClient := framework.Client.Pods(framework.Namespace.Name)
 
 		By("creating the pod")
 		name := "pod-update-" + string(util.NewUUID())
@@ -191,10 +168,11 @@ var _ = Describe("Pods", func() {
 		if err != nil {
 			Fail(fmt.Sprintf("Error creating a pod: %v", err))
 		}
-		expectNoError(waitForPodRunning(c, pod.Name))
+		expectNoError(framework.WaitForPodRunning(pod.Name))
 	})
+
 	It("should be submitted and removed", func() {
-		podClient := c.Pods(api.NamespaceDefault)
+		podClient := framework.Client.Pods(framework.Namespace.Name)
 
 		By("creating the pod")
 		name := "pod-update-" + string(util.NewUUID())
@@ -294,7 +272,7 @@ var _ = Describe("Pods", func() {
 	})
 
 	It("should be updated", func() {
-		podClient := c.Pods(api.NamespaceDefault)
+		podClient := framework.Client.Pods(framework.Namespace.Name)
 
 		By("creating the pod")
 		name := "pod-update-" + string(util.NewUUID())
@@ -337,7 +315,7 @@ var _ = Describe("Pods", func() {
 			Failf("Failed to create pod: %v", err)
 		}
 
-		expectNoError(waitForPodRunning(c, pod.Name))
+		expectNoError(framework.WaitForPodRunning(pod.Name))
 
 		By("verifying the pod is in kubernetes")
 		pods, err := podClient.List(labels.SelectorFromSet(labels.Set(map[string]string{"time": value})), fields.Everything())
@@ -367,7 +345,7 @@ var _ = Describe("Pods", func() {
 			return false, fmt.Errorf("failed to update pod: %v", err)
 		}))
 
-		expectNoError(waitForPodRunning(c, pod.Name))
+		expectNoError(framework.WaitForPodRunning(pod.Name))
 
 		By("verifying the updated pod is in kubernetes")
 		pods, err = podClient.List(labels.SelectorFromSet(labels.Set(map[string]string{"time": value})), fields.Everything())
@@ -394,12 +372,12 @@ var _ = Describe("Pods", func() {
 				},
 			},
 		}
-		defer c.Pods(api.NamespaceDefault).Delete(serverPod.Name, nil)
-		_, err := c.Pods(api.NamespaceDefault).Create(serverPod)
+		defer framework.Client.Pods(framework.Namespace.Name).Delete(serverPod.Name, nil)
+		_, err := framework.Client.Pods(framework.Namespace.Name).Create(serverPod)
 		if err != nil {
 			Fail(fmt.Sprintf("Failed to create serverPod: %v", err))
 		}
-		expectNoError(waitForPodRunning(c, serverPod.Name))
+		expectNoError(framework.WaitForPodRunning(serverPod.Name))
 
 		// This service exposes port 8080 of the test pod as a service on port 8765
 		// TODO(filbranden): We would like to use a unique service name such as:
@@ -426,8 +404,8 @@ var _ = Describe("Pods", func() {
 				},
 			},
 		}
-		defer c.Services(api.NamespaceDefault).Delete(svc.Name)
-		_, err = c.Services(api.NamespaceDefault).Create(svc)
+		defer framework.Client.Services(framework.Namespace.Name).Delete(svc.Name)
+		_, err = framework.Client.Services(framework.Namespace.Name).Create(svc)
 		if err != nil {
 			Fail(fmt.Sprintf("Failed to create service: %v", err))
 		}
@@ -451,7 +429,7 @@ var _ = Describe("Pods", func() {
 			},
 		}
 
-		testContainerOutput("service env", c, pod, 0, []string{
+		framework.TestContainerOutput("service env", pod, 0, []string{
 			"FOOSERVICE_SERVICE_HOST=",
 			"FOOSERVICE_SERVICE_PORT=",
 			"FOOSERVICE_PORT=",
@@ -463,7 +441,7 @@ var _ = Describe("Pods", func() {
 	})
 
 	It("should be restarted with a docker exec \"cat /tmp/health\" liveness probe", func() {
-		runLivenessTest(c, &api.Pod{
+		runLivenessTest(framework.Client, framework.Namespace.Name, &api.Pod{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "liveness-exec",
 				Labels: map[string]string{"test": "liveness"},
@@ -489,7 +467,7 @@ var _ = Describe("Pods", func() {
 	})
 
 	It("should *not* be restarted with a docker exec \"cat /tmp/health\" liveness probe", func() {
-		runLivenessTest(c, &api.Pod{
+		runLivenessTest(framework.Client, framework.Namespace.Name, &api.Pod{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "liveness-exec",
 				Labels: map[string]string{"test": "liveness"},
@@ -515,7 +493,7 @@ var _ = Describe("Pods", func() {
 	})
 
 	It("should be restarted with a /healthz http liveness probe", func() {
-		runLivenessTest(c, &api.Pod{
+		runLivenessTest(framework.Client, framework.Namespace.Name, &api.Pod{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "liveness-http",
 				Labels: map[string]string{"test": "liveness"},
@@ -553,7 +531,7 @@ var _ = Describe("Pods", func() {
 				Fail(fmt.Sprintf("Failed to create client config: %v", err))
 			}
 
-			podClient := c.Pods(api.NamespaceDefault)
+			podClient := framework.Client.Pods(framework.Namespace.Name)
 
 			By("creating the pod")
 			name := "pod-exec-" + string(util.NewUUID())
@@ -589,7 +567,7 @@ var _ = Describe("Pods", func() {
 			}()
 
 			By("waiting for the pod to start running")
-			expectNoError(waitForPodRunning(c, pod.Name, 300*time.Second))
+			expectNoError(framework.WaitForPodRunning(pod.Name))
 
 			By("verifying the pod is in kubernetes")
 			pods, err := podClient.List(labels.SelectorFromSet(labels.Set(map[string]string{"time": value})))
@@ -601,11 +579,11 @@ var _ = Describe("Pods", func() {
 			pod = &pods.Items[0]
 			By(fmt.Sprintf("executing command on host %s pod %s in container %s",
 				pod.Status.Host, pod.Name, pod.Spec.Containers[0].Name))
-			req := c.Get().
+			req := framework.Client.Get().
 				Prefix("proxy").
 				Resource("minions").
 				Name(pod.Status.Host).
-				Suffix("exec", api.NamespaceDefault, pod.Name, pod.Spec.Containers[0].Name)
+				Suffix("exec", framework.Namespace.Name, pod.Name, pod.Spec.Containers[0].Name)
 
 			out := &bytes.Buffer{}
 			e := remotecommand.New(req, clientConfig, []string{"whoami"}, nil, out, nil, false)
@@ -625,7 +603,7 @@ var _ = Describe("Pods", func() {
 				Fail(fmt.Sprintf("Failed to create client config: %v", err))
 			}
 
-			podClient := c.Pods(api.NamespaceDefault)
+			podClient := framework.Client.Pods(framework.Namespace.Name)
 
 			By("creating the pod")
 			name := "pod-portforward-" + string(util.NewUUID())
@@ -662,7 +640,7 @@ var _ = Describe("Pods", func() {
 			}()
 
 			By("waiting for the pod to start running")
-			expectNoError(waitForPodRunning(c, pod.Name, 300*time.Second))
+			expectNoError(framework.WaitForPodRunning(pod.Name))
 
 			By("verifying the pod is in kubernetes")
 			pods, err := podClient.List(labels.SelectorFromSet(labels.Set(map[string]string{"time": value})))
@@ -675,11 +653,11 @@ var _ = Describe("Pods", func() {
 			By(fmt.Sprintf("initiating port forwarding to host %s pod %s in container %s",
 				pod.Status.Host, pod.Name, pod.Spec.Containers[0].Name))
 
-			req := c.Get().
+			req := framework.Client.Get().
 				Prefix("proxy").
 				Resource("minions").
 				Name(pod.Status.Host).
-				Suffix("portForward", api.NamespaceDefault, pod.Name)
+				Suffix("portForward", framework.Namespace.Name, pod.Name)
 
 			stopChan := make(chan struct{})
 			pf, err := portforward.New(req, clientConfig, []string{"5678:80"}, stopChan)

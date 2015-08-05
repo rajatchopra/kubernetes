@@ -69,6 +69,7 @@ type KubeletServer struct {
 	FileCheckFrequency             time.Duration
 	HTTPCheckFrequency             time.Duration
 	ManifestURL                    string
+	ManifestURLHeader              string
 	EnableServer                   bool
 	Address                        util.IP
 	Port                           uint
@@ -191,6 +192,7 @@ func (s *KubeletServer) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&s.FileCheckFrequency, "file-check-frequency", s.FileCheckFrequency, "Duration between checking config files for new data")
 	fs.DurationVar(&s.HTTPCheckFrequency, "http-check-frequency", s.HTTPCheckFrequency, "Duration between checking http for new data")
 	fs.StringVar(&s.ManifestURL, "manifest-url", s.ManifestURL, "URL for accessing the container manifest")
+	fs.StringVar(&s.ManifestURLHeader, "manifest-url-header", s.ManifestURLHeader, "HTTP header to use when accessing the manifest URL, with the key separated from the value with a ':', as in 'key:value'")
 	fs.BoolVar(&s.EnableServer, "enable-server", s.EnableServer, "Enable the Kubelet's server")
 	fs.Var(&s.Address, "address", "The IP address for the Kubelet to serve on (set to 0.0.0.0 for all interfaces)")
 	fs.UintVar(&s.Port, "port", s.Port, "The port for the Kubelet to serve on. Note that \"kubectl logs\" will not work if you set this flag.") // see #9325
@@ -240,7 +242,7 @@ func (s *KubeletServer) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.ContainerRuntime, "container_runtime", s.ContainerRuntime, "The container runtime to use. Possible values: 'docker', 'rkt'. Default: 'docker'.")
 	fs.StringVar(&s.SystemContainer, "system-container", s.SystemContainer, "Optional resource-only container in which to place all non-kernel processes that are not already in a container. Empty for no container. Rolling back the flag requires a reboot. (Default: \"\").")
 	fs.BoolVar(&s.ConfigureCBR0, "configure-cbr0", s.ConfigureCBR0, "If true, kubelet will configure cbr0 based on Node.Spec.PodCIDR.")
-	fs.IntVar(&s.MaxPods, "max-pods", 100, "Number of Pods that can run on this Kubelet.")
+	fs.IntVar(&s.MaxPods, "max-pods", 40, "Number of Pods that can run on this Kubelet.")
 	fs.StringVar(&s.DockerExecHandlerName, "docker-exec-handler", s.DockerExecHandlerName, "Handler to use when executing a command in a container. Valid values are 'native' and 'nsenter'. Defaults to 'native'.")
 	fs.StringVar(&s.PodCIDR, "pod-cidr", "", "The CIDR to use for pod IP addresses, only used in standalone mode.  In cluster mode, this is obtained from the master.")
 	// Flags intended for testing, not recommended used in production environments.
@@ -289,6 +291,15 @@ func (s *KubeletServer) Run(_ []string) error {
 	cloud := cloudprovider.InitCloudProvider(s.CloudProvider, s.CloudConfigFile)
 	glog.V(2).Infof("Successfully initialized cloud provider: %q from the config file: %q\n", s.CloudProvider, s.CloudConfigFile)
 
+	manifestURLHeader := make(http.Header)
+	if s.ManifestURLHeader != "" {
+		pieces := strings.Split(s.ManifestURLHeader, ":")
+		if len(pieces) != 2 {
+			return fmt.Errorf("manifest-url-header must have a single ':' key-value separator, got %q", s.ManifestURLHeader)
+		}
+		manifestURLHeader.Set(pieces[0], pieces[1])
+	}
+
 	hostNetworkSources, err := kubelet.GetValidatedSources(strings.Split(s.HostNetworkSources, ","))
 	if err != nil {
 		return err
@@ -324,6 +335,7 @@ func (s *KubeletServer) Run(_ []string) error {
 		RootDirectory:                  s.RootDirectory,
 		ConfigFile:                     s.Config,
 		ManifestURL:                    s.ManifestURL,
+		ManifestURLHeader:              manifestURLHeader,
 		FileCheckFrequency:             s.FileCheckFrequency,
 		HTTPCheckFrequency:             s.HTTPCheckFrequency,
 		PodInfraContainerImage:         s.PodInfraContainerImage,
@@ -395,7 +407,7 @@ func (s *KubeletServer) InitializeTLS() (*kubelet.TLSOptions, error) {
 	if s.TLSCertFile == "" && s.TLSPrivateKeyFile == "" {
 		s.TLSCertFile = path.Join(s.CertDirectory, "kubelet.crt")
 		s.TLSPrivateKeyFile = path.Join(s.CertDirectory, "kubelet.key")
-		if err := util.GenerateSelfSignedCert(nodeutil.GetHostname(s.HostnameOverride), s.TLSCertFile, s.TLSPrivateKeyFile); err != nil {
+		if err := util.GenerateSelfSignedCert(nodeutil.GetHostname(s.HostnameOverride), s.TLSCertFile, s.TLSPrivateKeyFile, nil, nil); err != nil {
 			return nil, fmt.Errorf("unable to generate self signed cert: %v", err)
 		}
 		glog.V(4).Infof("Using self-signed cert (%s, %s)", s.TLSCertFile, s.TLSPrivateKeyFile)
@@ -654,8 +666,8 @@ func makePodSourceConfig(kc *KubeletConfig) *config.PodConfig {
 
 	// define url config source
 	if kc.ManifestURL != "" {
-		glog.Infof("Adding manifest url: %v", kc.ManifestURL)
-		config.NewSourceURL(kc.ManifestURL, kc.NodeName, kc.HTTPCheckFrequency, cfg.Channel(kubelet.HTTPSource))
+		glog.Infof("Adding manifest url %q with HTTP header %v", kc.ManifestURL, kc.ManifestURLHeader)
+		config.NewSourceURL(kc.ManifestURL, kc.ManifestURLHeader, kc.NodeName, kc.HTTPCheckFrequency, cfg.Channel(kubelet.HTTPSource))
 	}
 	if kc.KubeClient != nil {
 		glog.Infof("Watching apiserver")
@@ -677,6 +689,7 @@ type KubeletConfig struct {
 	RootDirectory                  string
 	ConfigFile                     string
 	ManifestURL                    string
+	ManifestURLHeader              http.Header
 	FileCheckFrequency             time.Duration
 	HTTPCheckFrequency             time.Duration
 	Hostname                       string

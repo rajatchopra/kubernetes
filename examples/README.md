@@ -1,14 +1,19 @@
-# Examples
-
-This directory contains a number of different examples of how to run applications with Kubernetes.
-
-**Note**
-This documentation is current for HEAD.  
-
-Examples for previous releases is available in their respective branches:
-   * [v0.19.0](https://github.com/GoogleCloudPlatform/kubernetes/tree/master/release-0.19.0/examples)
-   * [v0.18.1](https://github.com/GoogleCloudPlatform/kubernetes/tree/release-0.18/examples)
-   * [v0.17.1](https://github.com/GoogleCloudPlatform/kubernetes/tree/release-0.17/examples)
+<!-- BEGIN MUNGE: UNVERSIONED_WARNING -->
 
 
+<!-- END MUNGE: UNVERSIONED_WARNING -->
+
+# Kubernetes Examples: releases.k8s.io/v1.0.2
+
+This directory contains a number of different examples of how to run
+applications with Kubernetes.
+
+
+<!-- BEGIN MUNGE: IS_VERSIONED -->
+<!-- TAG IS_VERSIONED -->
+<!-- END MUNGE: IS_VERSIONED -->
+
+
+<!-- BEGIN MUNGE: GENERATED_ANALYTICS -->
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/examples/README.md?pixel)]()
+<!-- END MUNGE: GENERATED_ANALYTICS -->
