@@ -11,13 +11,6 @@ addon-dir-create:
     - require:
         - file: addon-dir-delete
 
-/etc/kubernetes/addons/namespace.yaml:
-  file.managed:
-    - source: salt://kube-addons/namespace.yaml
-    - user: root
-    - group: root
-    - file_mode: 644
-
 {% if pillar.get('enable_cluster_monitoring', '').lower() == 'influxdb' %}
 /etc/kubernetes/addons/cluster-monitoring/influxdb:
   file.recurse:
@@ -94,17 +87,6 @@ addon-dir-create:
     - file_mode: 644
 {% endif %}
 
-{% if pillar.get('enable_cluster_ui', 'true').lower() == 'true' %}
-/etc/kubernetes/addons/kube-ui:
-  file.recurse:
-    - source: salt://kube-addons/kube-ui
-    - include_pat: E@^.+\.yaml$
-    - user: root
-    - group: root
-    - dir_mode: 755
-    - file_mode: 644
-{% endif %}
-
 /etc/kubernetes/kube-addons.sh:
   file.managed:
     - source: salt://kube-addons/kube-addons.sh
@@ -119,17 +101,13 @@ addon-dir-create:
     - group: root
     - mode: 755
 
-{% if pillar.get('is_systemd') %}
+{% if grains['os_family'] == 'RedHat' %}
 
-{{ pillar.get('systemd_system_path') }}/kube-addons.service:
+/usr/lib/systemd/system/kube-addons.service:
   file.managed:
     - source: salt://kube-addons/kube-addons.service
     - user: root
     - group: root
-  cmd.wait:
-    - name: /opt/kubernetes/helpers/services bounce kube-addons
-    - watch:
-      - file: {{ pillar.get('systemd_system_path') }}/kube-addons.service
 
 {% else %}
 
@@ -155,9 +133,3 @@ kube-addons:
     - enable: True
     - require:
         - service: service-kube-addon-stop
-    - watch:
-{% if pillar.get('is_systemd') %}
-      - file: {{ pillar.get('systemd_system_path') }}/kube-addons.service
-{% else %}
-      - file: /etc/init.d/kube-addons
-{% endif %}

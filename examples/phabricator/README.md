@@ -1,8 +1,3 @@
-<!-- BEGIN MUNGE: UNVERSIONED_WARNING -->
-
-
-<!-- END MUNGE: UNVERSIONED_WARNING -->
-
 ## Phabricator example
 
 This example shows how to build a simple multi-tier web application using Kubernetes and Docker.
@@ -11,9 +6,9 @@ The example combines a web frontend and an external service that provides MySQL 
 
 ### Step Zero: Prerequisites
 
-This example assumes that you have a basic understanding of kubernetes [services](../../docs/user-guide/services.md) and that you have forked the repository and [turned up a Kubernetes cluster](../../docs/getting-started-guides/):
+This example assumes that you have a basic understanding of kubernetes [services](../../docs/services.md) and that you have forked the repository and [turned up a Kubernetes cluster](../../docs/getting-started-guides):
 
-```sh
+```shell
 $ cd kubernetes
 $ hack/dev-build-and-up.sh
 ```
@@ -26,9 +21,9 @@ In the remaining part of this example we will assume that your instance is named
 
 ### Step Two: Turn up the phabricator
 
-To start Phabricator server use the file [`examples/phabricator/phabricator-controller.json`](phabricator-controller.json) which describes a [replication controller](../../docs/user-guide/replication-controller.md) with a single [pod](../../docs/user-guide/pods.md) running an Apache server with Phabricator PHP source:
+To start Phabricator server use the file [`examples/phabricator/phabricator-controller.json`](phabricator-controller.json) which describes a [replication controller](../../docs/replication-controller.md) with a single [pod](../../docs/pods.md) running an Apache server with Phabricator PHP source:
 
-```json
+```js
 {
   "kind": "ReplicationController",
   "apiVersion": "v1",
@@ -70,26 +65,26 @@ To start Phabricator server use the file [`examples/phabricator/phabricator-cont
 
 Create the phabricator pod in your Kubernetes cluster by running:
 
-```sh
+```shell
 $ kubectl create -f examples/phabricator/phabricator-controller.json
 ```
 
 Once that's up you can list the pods in the cluster, to verify that it is running:
 
-```sh
+```shell
 kubectl get pods
 ```
 
 You'll see a single phabricator pod. It will also display the machine that the pod is running on once it gets placed (may take up to thirty seconds):
 
 ```
-NAME                           READY     STATUS    RESTARTS   AGE
-phabricator-controller-9vy68   1/1       Running   0          1m
+POD                           IP           CONTAINER(S)  IMAGE(S)                  HOST                                                      LABELS                                   STATUS
+phabricator-controller-02qp4  10.244.1.34  phabricator   fgrzadkowski/phabricator  kubernetes-minion-2.c.myproject.internal/130.211.141.151  name=phabricator
 ```
 
 If you ssh to that machine, you can run `docker ps` to see the actual pod:
 
-```sh
+```shell
 me@workstation$ gcloud compute ssh --zone us-central1-b kubernetes-minion-2
 
 $ sudo docker ps
@@ -120,7 +115,7 @@ gcloud sql instances patch phabricator-db --authorized-networks 130.211.141.151
 
 To automate this process and make sure that a proper host is authorized even if pod is rescheduled to a new machine we need a separate pod that periodically lists pods and authorizes hosts. Use the file [`examples/phabricator/authenticator-controller.json`](authenticator-controller.json):
 
-```json
+```js
 {
   "kind": "ReplicationController",
   "apiVersion": "v1",
@@ -156,18 +151,18 @@ To automate this process and make sure that a proper host is authorized even if 
 
 To create the pod run:
 
-```sh
+```shell
 $ kubectl create -f examples/phabricator/authenticator-controller.json
 ```
 
 
 ### Step Four: Turn up the phabricator service
 
-A Kubernetes 'service' is a named load balancer that proxies traffic to one or more containers. The services in a Kubernetes cluster are discoverable inside other containers via *environment variables*. Services find the containers to load balance based on pod labels.  These environment variables are typically referenced in application code, shell scripts, or other places where one node needs to talk to another in a distributed system.  You should catch up on [kubernetes services](../../docs/user-guide/services.md) before proceeding.
+A Kubernetes 'service' is a named load balancer that proxies traffic to one or more containers. The services in a Kubernetes cluster are discoverable inside other containers via *environment variables*. Services find the containers to load balance based on pod labels.  These environment variables are typically referenced in application code, shell scripts, or other places where one node needs to talk to another in a distributed system.  You should catch up on [kubernetes services](http://docs.k8s.io/services.md) before proceeding.
 
 The pod that you created in Step One has the label `name=phabricator`. The selector field of the service determines which pods will receive the traffic sent to the service. Since we are setting up a service for an external application we also need to request external static IP address (otherwise it will be assigned dynamically):
 
-```sh
+```shell
 $ gcloud compute addresses create phabricator --region us-central1
 Created [https://www.googleapis.com/compute/v1/projects/myproject/regions/us-central1/addresses/phabricator].
 NAME         REGION      ADDRESS        STATUS
@@ -176,7 +171,7 @@ phabricator  us-central1 107.178.210.6  RESERVED
 
 Use the file [`examples/phabricator/phabricator-service.json`](phabricator-service.json):
 
-```json
+```js
 {
   "kind": "Service",
   "apiVersion": "v1",
@@ -200,22 +195,22 @@ Use the file [`examples/phabricator/phabricator-service.json`](phabricator-servi
 
 To create the service run:
 
-```sh
+```shell
 $ kubectl create -f examples/phabricator/phabricator-service.json
 phabricator
 ```
 
 To play with the service itself, find the external IP of the load balancer:
 
-```sh
-$ kubectl get services phabricator -o template --template='{{(index .status.loadBalancer.ingress 0).ip}}{{"\n"}}'
+```shell
+$ kubectl get services guestbook -o template --template='{{(index .status.loadBalancer.ingress 0).ip}}'
 ```
 
 and then visit port 80 of that IP address.
 
 **Note**: You may need to open the firewall for port 80 using the [console][cloud-console] or the `gcloud` tool. The following command will allow traffic from any source to instances tagged `kubernetes-minion`:
 
-```sh
+```shell
 $ gcloud compute firewall-rules create phabricator-node-80 --allow=tcp:80 --target-tags kubernetes-minion
 ```
 
@@ -223,16 +218,9 @@ $ gcloud compute firewall-rules create phabricator-node-80 --allow=tcp:80 --targ
 
 To turn down a Kubernetes cluster:
 
-```sh
+```shell
 $ cluster/kube-down.sh
 ```
 
 
-<!-- BEGIN MUNGE: IS_VERSIONED -->
-<!-- TAG IS_VERSIONED -->
-<!-- END MUNGE: IS_VERSIONED -->
-
-
-<!-- BEGIN MUNGE: GENERATED_ANALYTICS -->
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/examples/phabricator/README.md?pixel)]()
-<!-- END MUNGE: GENERATED_ANALYTICS -->

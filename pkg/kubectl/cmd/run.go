@@ -78,7 +78,7 @@ func Run(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string) e
 		return cmdutil.UsageError(cmd, "NAME is required for run")
 	}
 
-	namespace, _, err := f.DefaultNamespace()
+	namespace, err := f.DefaultNamespace()
 	if err != nil {
 		return err
 	}

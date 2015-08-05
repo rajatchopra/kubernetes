@@ -19,16 +19,14 @@
 set -e
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/../..
-source "util.sh"
-detect-master
-KUBE_SERVER="http:\/\/${KUBE_MASTER_IP}:8080"
+source "config-default.sh"
 
 if [ "${ENABLE_CLUSTER_DNS}" == true ]; then
-  echo "Deploying DNS on kubernetes"
-  sed -e "s/{{ pillar\['dns_replicas'\] }}/${DNS_REPLICAS}/g;s/{{ pillar\['dns_domain'\] }}/${DNS_DOMAIN}/g;s/kube_server_url/${KUBE_SERVER}/g;" skydns-rc.yaml.template > skydns-rc.yaml
-  sed -e "s/{{ pillar\['dns_server'\] }}/${DNS_SERVER_IP}/g" skydns-svc.yaml.template > skydns-svc.yaml
-  
-  # use kubectl to create skydns rc and service
-  "${KUBE_ROOT}/cluster/kubectl.sh" --namespace=kube-system create -f skydns-rc.yaml
-  "${KUBE_ROOT}/cluster/kubectl.sh" --namespace=kube-system create -f skydns-svc.yaml
+	echo "Deploying DNS on kubernetes"
+	sed -e "s/{{ pillar\['dns_replicas'\] }}/${DNS_REPLICAS}/g;s/{{ pillar\['dns_domain'\] }}/${DNS_DOMAIN}/g" skydns-rc.yaml.template > skydns-rc.yaml
+	sed -e "s/{{ pillar\['dns_server'\] }}/${DNS_SERVER_IP}/g" skydns-svc.yaml.template > skydns-svc.yaml
+	# use kubectl to create skydns rc and service
+	"${KUBE_ROOT}/cluster/kubectl.sh" create -f skydns-rc.yaml
+	"${KUBE_ROOT}/cluster/kubectl.sh" create -f skydns-svc.yaml
+	
 fi

@@ -86,13 +86,10 @@ func (b *Builder) Schema(schema validation.Schema) *Builder {
 	return b
 }
 
-// FilenameParam groups input in two categories: URLs and files (files, directories, STDIN)
-// If enforceNamespace is false, namespaces in the specs will be allowed to
-// override the default namespace. If it is true, namespaces that don't match
-// will cause an error.
-// If ContinueOnError() is set prior to this method, objects on the path that are not
-// recognized will be ignored (but logged at V(2)).
-func (b *Builder) FilenameParam(enforceNamespace bool, paths ...string) *Builder {
+// Filename is parameters passed via a filename argument which may be URLs, the "-" argument indicating
+// STDIN, or paths to files or directories. If ContinueOnError() is set prior to this method being called,
+// objects on the path that are unrecognized will be ignored (but logged at V(2)).
+func (b *Builder) FilenameParam(paths ...string) *Builder {
 	for _, s := range paths {
 		switch {
 		case s == "-":
@@ -108,11 +105,6 @@ func (b *Builder) FilenameParam(enforceNamespace bool, paths ...string) *Builder
 			b.Path(s)
 		}
 	}
-
-	if enforceNamespace {
-		b.RequireNamespace()
-	}
-
 	return b
 }
 
@@ -132,9 +124,7 @@ func (b *Builder) URL(urls ...*url.URL) *Builder {
 // prior to this method being called, objects in the stream that are unrecognized
 // will be ignored (but logged at V(2)).
 func (b *Builder) Stdin() *Builder {
-	b.stream = true
-	b.paths = append(b.paths, FileVisitorForSTDIN(b.mapper, b.continueOnError, b.schema))
-	return b
+	return b.Stream(os.Stdin, "STDIN")
 }
 
 // Stream will read objects from the provided reader, and if an error occurs will
@@ -143,18 +133,16 @@ func (b *Builder) Stdin() *Builder {
 // will be ignored (but logged at V(2)).
 func (b *Builder) Stream(r io.Reader, name string) *Builder {
 	b.stream = true
-	b.paths = append(b.paths, NewStreamVisitor(r, b.mapper, name, b.continueOnError, b.schema))
+	b.paths = append(b.paths, NewStreamVisitor(r, b.mapper, b.schema, name, b.continueOnError))
 	return b
 }
 
-// Path accepts a set of paths that may be files, directories (all can containing
-// one or more resources). Creates a FileVisitor for each file and then each
-// FileVisitor is streaming the content to a StreamVisitor. If ContinueOnError() is set
-// prior to this method being called, objects on the path that are unrecognized will be
-// ignored (but logged at V(2)).
+// Path is a set of filesystem paths that may be files containing one or more
+// resources. If ContinueOnError() is set prior to this method being called,
+// objects on the path that are unrecognized will be ignored (but logged at V(2)).
 func (b *Builder) Path(paths ...string) *Builder {
 	for _, p := range paths {
-		_, err := os.Stat(p)
+		i, err := os.Stat(p)
 		if os.IsNotExist(err) {
 			b.errs = append(b.errs, fmt.Errorf("the path %q does not exist", p))
 			continue
@@ -163,16 +151,26 @@ func (b *Builder) Path(paths ...string) *Builder {
 			b.errs = append(b.errs, fmt.Errorf("the path %q cannot be accessed: %v", p, err))
 			continue
 		}
-
-		visitors, err := ExpandPathsToFileVisitors(b.mapper, p, false, []string{".json", ".yaml", ".yml"}, b.continueOnError, b.schema)
-		if err != nil {
-			b.errs = append(b.errs, fmt.Errorf("error reading %q: %v", p, err))
-		}
-		if len(visitors) > 1 {
+		var visitor Visitor
+		if i.IsDir() {
 			b.dir = true
+			visitor = &DirectoryVisitor{
+				Mapper:       b.mapper,
+				Path:         p,
+				Extensions:   []string{".json", ".yaml", ".yml"},
+				Recursive:    false,
+				IgnoreErrors: b.continueOnError,
+				Schema:       b.schema,
+			}
+		} else {
+			visitor = &PathVisitor{
+				Mapper:       b.mapper,
+				Path:         p,
+				IgnoreErrors: b.continueOnError,
+				Schema:       b.schema,
+			}
 		}
-
-		b.paths = append(b.paths, visitors...)
+		b.paths = append(b.paths, visitor)
 	}
 	return b
 }
@@ -209,8 +207,8 @@ func (b *Builder) Selector(selector labels.Selector) *Builder {
 	return b
 }
 
-// NamespaceParam accepts the namespace that these resources should be
-// considered under from - used by DefaultNamespace() and RequireNamespace()
+// The namespace that these resources should be assumed to under - used by DefaultNamespace()
+// and RequireNamespace()
 func (b *Builder) NamespaceParam(namespace string) *Builder {
 	b.namespace = namespace
 	return b

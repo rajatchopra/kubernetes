@@ -1,6 +1,6 @@
 {
     "kind":"Service",
-    "apiVersion":"v1",
+    "apiVersion":"v1beta3",
     "metadata":{
         "name":"prometheus",
         "labels":{
@@ -8,7 +8,7 @@
         }
     },
     "spec":{
-        "type": "NodePort",
+        "publicIPs":["10.0.1.89"],
         "ports": [
         {
             "port":9090,

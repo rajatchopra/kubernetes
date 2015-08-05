@@ -64,7 +64,6 @@ kube::golang::test_targets() {
     cmd/integration
     cmd/gendocs
     cmd/genman
-    cmd/mungedocs
     cmd/genbashcomp
     cmd/genconversion
     cmd/gendeepcopy

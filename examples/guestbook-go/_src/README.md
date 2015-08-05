@@ -1,8 +1,3 @@
-<!-- BEGIN MUNGE: UNVERSIONED_WARNING -->
-
-
-<!-- END MUNGE: UNVERSIONED_WARNING -->
-
 ## Building and releasing Guestbook Image
 
 This process employs building two docker images, one compiles the source and the other hosts the compiled binaries.
@@ -39,11 +34,4 @@ Accepts an optional tag (defaults to "latest")
     ./script/clean.sh
 
 
-<!-- BEGIN MUNGE: IS_VERSIONED -->
-<!-- TAG IS_VERSIONED -->
-<!-- END MUNGE: IS_VERSIONED -->
-
-
-<!-- BEGIN MUNGE: GENERATED_ANALYTICS -->
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/examples/guestbook-go/_src/README.md?pixel)]()
-<!-- END MUNGE: GENERATED_ANALYTICS -->

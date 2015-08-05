@@ -105,7 +105,6 @@ func expandResourceShortcut(resource string) string {
 		// Please keep this alphabetized
 		"cs":     "componentstatuses",
 		"ev":     "events",
-		"ep":     "endpoints",
 		"limits": "limitRanges",
 		"no":     "nodes",
 		"po":     "pods",

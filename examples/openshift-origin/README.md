@@ -1,8 +1,3 @@
-<!-- BEGIN MUNGE: UNVERSIONED_WARNING -->
-
-
-<!-- END MUNGE: UNVERSIONED_WARNING -->
-
 ## OpenShift Origin example
 
 This example shows how to run OpenShift Origin as a pod on an existing Kubernetes cluster.
@@ -23,7 +18,7 @@ OpenShift Origin creates privileged containers when running Docker builds during
 If you are using a Salt based KUBERNETES_PROVIDER (**gce**, **vagrant**, **aws**), you should enable the
 ability to create privileged containers via the API.
 
-```sh
+```shell
 $ cd kubernetes
 $ vi cluster/saltbase/pillar/privilege.sls
 
@@ -33,14 +28,14 @@ allow_privileged: true
 
 Now spin up a cluster using your preferred KUBERNETES_PROVIDER
 
-```sh
+```shell
 $ export KUBERNETES_PROVIDER=gce
 $ cluster/kube-up.sh
 ```
 
 Next, let's setup some variables, and create a local folder that will hold generated configuration files.
 
-```sh
+```shell
 $ export OPENSHIFT_EXAMPLE=$(pwd)/examples/openshift-origin
 $ export OPENSHIFT_CONFIG=${OPENSHIFT_EXAMPLE}/config
 $ mkdir ${OPENSHIFT_CONFIG}
@@ -66,7 +61,7 @@ An external load balancer is needed to route traffic to our OpenShift master ser
 Kubernetes cluster.
 
 
-```sh
+```shell
 $ cluster/kubectl.sh create -f $OPENSHIFT_EXAMPLE/openshift-service.yaml
 ```
 
@@ -79,7 +74,7 @@ build default certificates.
 
 Grab the public IP address of the service we previously created.
 
-```sh
+```shell
 $ export PUBLIC_IP=$(cluster/kubectl.sh get services openshift --template="{{ index .status.loadBalancer.ingress 0 \"ip\" }}")
 $ echo $PUBLIC_IP
 ```
@@ -88,7 +83,7 @@ Ensure you have a valid PUBLIC_IP address before continuing in the example.
 
 We now need to run a command on your host to generate a proper OpenShift configuration.  To do this, we will volume mount the configuration directory that holds your Kubernetes kubeconfig file from the prior step.
 
-```sh
+```shell
 docker run --privileged -v ${OPENSHIFT_CONFIG}:/config openshift/origin start master --write-config=/config --kubeconfig='/config/kubeconfig' --master='https://localhost:8443' --public-master='https://${PUBLIC_IP}:8443'
 ```
 
@@ -108,13 +103,13 @@ $ sudo -E chown -R ${USER} ${OPENSHIFT_CONFIG}
 
 Then run the following command to collapse them into a Kubernetes secret.
 
-```sh
+```shell
 docker run -i -t --privileged -e="OPENSHIFTCONFIG=/config/admin.kubeconfig" -v ${OPENSHIFT_CONFIG}:/config openshift/origin ex bundle-secret openshift-config -f /config &> ${OPENSHIFT_EXAMPLE}/secret.json
 ```
 
 Now, lets create the secret in your Kubernetes cluster.
 
-```sh
+```shell
 $ cluster/kubectl.sh create -f ${OPENSHIFT_EXAMPLE}/secret.json
 ```
 
@@ -127,13 +122,13 @@ We are now ready to deploy OpenShift.
 We will deploy a pod that runs the OpenShift master.  The OpenShift master will delegate to the underlying Kubernetes
 system to manage Kubernetes specific resources.  For the sake of simplicity, the OpenShift master will run with an embedded etcd to hold OpenShift specific content.  This demonstration will evolve in the future to show how to run etcd in a pod so that content is not destroyed if the OpenShift master fails.
 
-```sh
+```shell
 $  cluster/kubectl.sh create -f ${OPENSHIFT_EXAMPLE}/openshift-controller.yaml
 ```
 
 You should now get a pod provisioned whose name begins with openshift.
 
-```sh
+```shell
 $ cluster/kubectl.sh get pods | grep openshift
 $ cluster/kubectl.sh log openshift-t7147 origin
 Running: cluster/../cluster/gce/../../cluster/../_output/dockerized/bin/linux/amd64/kubectl logs openshift-t7t47 origin
@@ -143,7 +138,7 @@ Running: cluster/../cluster/gce/../../cluster/../_output/dockerized/bin/linux/am
 
 Depending upon your cloud provider, you may need to open up an external firewall rule for tcp:8443.  For GCE, you can run the following:
 
-```sh
+```shell
 gcloud compute --project "your-project" firewall-rules create "origin" --allow tcp:8443 --network "your-network" --source-ranges "0.0.0.0/0"
 ```
 
@@ -153,18 +148,11 @@ Open a browser and visit the OpenShift master public address reported in your lo
 
 You can use the CLI commands by running the following:
 
-```sh
+```shell
 $ docker run --privileged --entrypoint="/usr/bin/bash" -it -e="OPENSHIFTCONFIG=/config/admin.kubeconfig" -v ${OPENSHIFT_CONFIG}:/config openshift/origin
 $ osc config use-context public-default
 $ osc --help
 ```
 
 
-<!-- BEGIN MUNGE: IS_VERSIONED -->
-<!-- TAG IS_VERSIONED -->
-<!-- END MUNGE: IS_VERSIONED -->
-
-
-<!-- BEGIN MUNGE: GENERATED_ANALYTICS -->
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/examples/openshift-origin/README.md?pixel)]()
-<!-- END MUNGE: GENERATED_ANALYTICS -->

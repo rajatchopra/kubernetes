@@ -18,11 +18,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
-source "${KUBE_ROOT}/hack/lib/init.sh"
-
-kube::golang::setup_env
-
 function result_file_name() {
 	local version=$1
 	if [ "${version}" == "api" ]; then
@@ -55,21 +50,11 @@ EOF
 	mv $TMPFILE `result_file_name ${version}`
 }
 
-function generate_deep_copies() {
-  local versions="api v1beta3 v1"
-  # To avoid compile errors, remove the currently existing files.
-  for ver in ${versions}; do
-    rm -f `result_file_name ${ver}`
-  done
-  apiVersions=""
-  for ver in ${versions}; do
-    # Ensure that the version being processed is registered by setting
-    # KUBE_API_VERSIONS.
-    if [ "${ver}" != "api" ]; then
-      apiVersions="${ver}"
-    fi
-    KUBE_API_VERSIONS="${apiVersions}" generate_version "${ver}"
-  done
-}
-
-generate_deep_copies
+VERSIONS="api v1beta3 v1"
+# To avoid compile errors, remove the currently existing files.
+for ver in $VERSIONS; do
+	rm -f `result_file_name ${ver}`
+done
+for ver in $VERSIONS; do 
+	generate_version "${ver}"
+done

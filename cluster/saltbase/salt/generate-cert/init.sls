@@ -1,4 +1,3 @@
-{% set master_extra_sans=grains.get('master_extra_sans', '') %}
 {% if grains.cloud is defined %}
   {% if grains.cloud == 'gce' %}
     {% set cert_ip='_use_gce_external_ip_' %}
@@ -36,7 +35,7 @@ kubernetes-cert:
     - unless: test -f /srv/kubernetes/server.cert
     - source: salt://generate-cert/{{certgen}}
 {% if cert_ip is defined %}
-    - args: {{cert_ip}} {{master_extra_sans}}
+    - args: {{cert_ip}}
     - require:
       - pkg: curl
 {% endif %}

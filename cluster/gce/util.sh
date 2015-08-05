@@ -253,6 +253,24 @@ function detect-minion-names {
   echo "MINION_NAMES=${MINION_NAMES[*]}" >&2
 }
 
+# Waits until the number of running nodes in the instance group is equal to NUM_NODES
+#
+# Assumed vars:
+#   NODE_INSTANCE_PREFIX
+#   NUM_MINIONS
+function wait-for-minions-to-run {
+  detect-project
+  local running_minions=0
+  while [[ "${NUM_MINIONS}" != "${running_minions}" ]]; do
+    echo -e -n "${color_yellow}Waiting for minions to run. "
+    echo -e "${running_minions} out of ${NUM_MINIONS} running. Retrying.${color_norm}"
+    sleep 5
+    running_minions=$((gcloud preview --project "${PROJECT}" instance-groups \
+      --zone "${ZONE}" instances --group "${NODE_INSTANCE_PREFIX}-group" list \
+      --running || true) | wc -l | xargs)
+  done
+}
+
 # Detect the information about the minions
 #
 # Assumed vars:
@@ -677,17 +695,16 @@ function kube-up {
   write-node-env
   create-node-instance-template
 
-  gcloud compute instance-groups managed \
+  gcloud preview managed-instance-groups --zone "${ZONE}" \
       create "${NODE_INSTANCE_PREFIX}-group" \
       --project "${PROJECT}" \
-      --zone "${ZONE}" \
       --base-instance-name "${NODE_INSTANCE_PREFIX}" \
       --size "${NUM_MINIONS}" \
       --template "${NODE_INSTANCE_PREFIX}-template" || true;
-  gcloud compute instance-groups managed wait-until-stable \
-      "${NODE_INSTANCE_PREFIX}-group" \
-			--zone "${ZONE}" \
-			--project "${PROJECT}" || true;
+  # TODO: this should be true when the above create managed-instance-group
+  # command returns, but currently it returns before the instances come up due
+  # to gcloud's deficiency.
+  wait-for-minions-to-run
   detect-minion-names
   detect-master
 
@@ -711,7 +728,7 @@ function kube-up {
           -H "Authorization: Bearer ${KUBE_BEARER_TOKEN}" \
           ${secure} \
           --max-time 5 --fail --output /dev/null --silent \
-          "https://${KUBE_MASTER_IP}/api/v1/pods"; do
+          "https://${KUBE_MASTER_IP}/api/v1beta3/pods"; do
       printf "."
       sleep 2
   done
@@ -752,27 +769,22 @@ function kube-down {
   echo "Bringing down cluster"
   set +e  # Do not stop on error
 
-  # Get the name of the managed instance group template before we delete the
-  # managed instange group. (The name of the managed instnace group template may
-  # change during a cluster upgrade.)
-  local template=$(get-template "${PROJECT}" "${ZONE}" "${NODE_INSTANCE_PREFIX}-group")
-
-  # The gcloud APIs don't return machine parseable error codes/retry information. Therefore the best we can
+  # The gcloud APIs don't return machine parsable error codes/retry information. Therefore the best we can
   # do is parse the output and special case particular responses we are interested in.
-  if gcloud compute instance-groups managed describe --project "${PROJECT}" --zone "${ZONE}" "${NODE_INSTANCE_PREFIX}-group" &>/dev/null; then
-    deleteCmdOutput=$(gcloud compute instance-groups managed delete --zone "${ZONE}" \
+  if gcloud preview managed-instance-groups --project "${PROJECT}" --zone "${ZONE}" describe "${NODE_INSTANCE_PREFIX}-group" &>/dev/null; then
+    deleteCmdOutput=$(gcloud preview managed-instance-groups --zone "${ZONE}" delete \
       --project "${PROJECT}" \
       --quiet \
       "${NODE_INSTANCE_PREFIX}-group")
     if [[ "$deleteCmdOutput" != ""  ]]; then
-      # Managed instance group deletion is done asynchronously, we must wait for it to complete, or subsequent steps fail
+      # Managed instance group deletion is done asyncronously, we must wait for it to complete, or subsequent steps fail
       deleteCmdOperationId=$(echo $deleteCmdOutput | grep "Operation:" | sed "s/.*Operation:[[:space:]]*\([^[:space:]]*\).*/\1/g")
       if [[ "$deleteCmdOperationId" != ""  ]]; then
         deleteCmdStatus="PENDING"
         while [[ "$deleteCmdStatus" != "DONE" ]]
         do
           sleep 5
-          deleteCmdOperationOutput=$(gcloud compute instance-groups managed --zone "${ZONE}" --project "${PROJECT}" get-operation $deleteCmdOperationId)
+          deleteCmdOperationOutput=$(gcloud preview managed-instance-groups --zone "${ZONE}" --project "${PROJECT}" get-operation $deleteCmdOperationId)
           deleteCmdStatus=$(echo $deleteCmdOperationOutput | grep -i "status:" | sed "s/.*status:[[:space:]]*\([^[:space:]]*\).*/\1/g")
           echo "Waiting for MIG deletion to complete. Current status: " $deleteCmdStatus
         done
@@ -780,11 +792,11 @@ function kube-down {
     fi
   fi
 
-  if gcloud compute instance-templates describe --project "${PROJECT}" "${template}" &>/dev/null; then
+  if gcloud compute instance-templates describe --project "${PROJECT}" "${NODE_INSTANCE_PREFIX}-template" &>/dev/null; then
     gcloud compute instance-templates delete \
       --project "${PROJECT}" \
       --quiet \
-      "${template}"
+      "${NODE_INSTANCE_PREFIX}-template"
   fi
 
   # First delete the master (if it exists).
@@ -874,22 +886,6 @@ function kube-down {
   set -e
 }
 
-# Gets the instance template for the managed instance group with the provided
-# project, zone, and group name. It echos the template name so that the function
-# output can be used.
-#
-# $1: project
-# $2: zone
-# $3: managed instance group name
-function get-template {
-  # url is set to https://www.googleapis.com/compute/v1/projects/$1/global/instanceTemplates/<template>
-  local url=$(gcloud compute instance-groups managed describe --project="${1}" --zone="${2}" "${3}" | grep instanceTemplate)
-  # template is set to <template> (the pattern strips off all but last slash)
-  local template="${url##*/}"
-  echo "${template}"
-}
-
-
 # Checks if there are any present resources related kubernetes cluster.
 #
 # Assumed vars:
@@ -898,13 +894,14 @@ function get-template {
 #   ZONE
 # Vars set:
 #   KUBE_RESOURCE_FOUND
+
 function check-resources {
   detect-project
 
   echo "Looking for already existing resources"
   KUBE_RESOURCE_FOUND=""
 
-  if gcloud compute instance-groups managed describe --project "${PROJECT}" --zone "${ZONE}" "${NODE_INSTANCE_PREFIX}-group" &>/dev/null; then
+  if gcloud preview managed-instance-groups --project "${PROJECT}" --zone "${ZONE}" describe "${NODE_INSTANCE_PREFIX}-group" &>/dev/null; then
     KUBE_RESOURCE_FOUND="Managed instance group ${NODE_INSTANCE_PREFIX}-group"
     return 1
   fi
@@ -1001,7 +998,7 @@ function prepare-push() {
     # being used, create a temp one, then delete the old one and recreate it once again.
     create-node-instance-template "tmp"
 
-    gcloud compute instance-groups managed --zone "${ZONE}" \
+    gcloud preview managed-instance-groups --zone "${ZONE}" \
       set-template "${NODE_INSTANCE_PREFIX}-group" \
       --project "${PROJECT}" \
       --template "${NODE_INSTANCE_PREFIX}-template-tmp" || true;
@@ -1013,7 +1010,7 @@ function prepare-push() {
 
     create-node-instance-template
 
-    gcloud compute instance-groups managed --zone "${ZONE}" \
+    gcloud preview managed-instance-groups --zone "${ZONE}" \
       set-template "${NODE_INSTANCE_PREFIX}-group" \
       --project "${PROJECT}" \
       --template "${NODE_INSTANCE_PREFIX}-template" || true;

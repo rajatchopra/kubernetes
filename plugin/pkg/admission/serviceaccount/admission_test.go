@@ -128,7 +128,6 @@ func TestAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.MountServiceAccountToken = true
-	admit.RequireAPIToken = false
 
 	// Add the default service account for the ns into the cache
 	admit.serviceAccounts.Add(&api.ServiceAccount{
@@ -149,29 +148,6 @@ func TestAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t *testing.T) {
 	}
 }
 
-func TestAssignsDefaultServiceAccountAndRejectsMissingAPIToken(t *testing.T) {
-	ns := "myns"
-
-	admit := NewServiceAccount(nil)
-	admit.MountServiceAccountToken = true
-	admit.RequireAPIToken = true
-
-	// Add the default service account for the ns into the cache
-	admit.serviceAccounts.Add(&api.ServiceAccount{
-		ObjectMeta: api.ObjectMeta{
-			Name:      DefaultServiceAccountName,
-			Namespace: ns,
-		},
-	})
-
-	pod := &api.Pod{}
-	attrs := admission.NewAttributesRecord(pod, "Pod", ns, "myname", string(api.ResourcePods), "", admission.Create, nil)
-	err := admit.Admit(attrs)
-	if err == nil {
-		t.Errorf("Expected admission error for missing API token")
-	}
-}
-
 func TestFetchesUncachedServiceAccount(t *testing.T) {
 	ns := "myns"
 
@@ -184,7 +160,6 @@ func TestFetchesUncachedServiceAccount(t *testing.T) {
 	})
 
 	admit := NewServiceAccount(client)
-	admit.RequireAPIToken = false
 
 	pod := &api.Pod{}
 	attrs := admission.NewAttributesRecord(pod, "Pod", ns, "myname", string(api.ResourcePods), "", admission.Create, nil)
@@ -233,7 +208,6 @@ func TestAutomountsAPIToken(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.MountServiceAccountToken = true
-	admit.RequireAPIToken = true
 
 	// Add the default service account for the ns with a token into the cache
 	admit.serviceAccounts.Add(&api.ServiceAccount{
@@ -305,7 +279,6 @@ func TestRespectsExistingMount(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.MountServiceAccountToken = true
-	admit.RequireAPIToken = true
 
 	// Add the default service account for the ns with a token into the cache
 	admit.serviceAccounts.Add(&api.ServiceAccount{
@@ -372,7 +345,6 @@ func TestAllowsReferencedSecretVolumes(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.LimitSecretReferences = true
-	admit.RequireAPIToken = false
 
 	// Add the default service account for the ns with a secret reference into the cache
 	admit.serviceAccounts.Add(&api.ServiceAccount{
@@ -404,7 +376,6 @@ func TestRejectsUnreferencedSecretVolumes(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.LimitSecretReferences = true
-	admit.RequireAPIToken = false
 
 	// Add the default service account for the ns into the cache
 	admit.serviceAccounts.Add(&api.ServiceAccount{
@@ -433,7 +404,6 @@ func TestAllowsReferencedImagePullSecrets(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.LimitSecretReferences = true
-	admit.RequireAPIToken = false
 
 	// Add the default service account for the ns with a secret reference into the cache
 	admit.serviceAccounts.Add(&api.ServiceAccount{
@@ -463,7 +433,6 @@ func TestRejectsUnreferencedImagePullSecrets(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.LimitSecretReferences = true
-	admit.RequireAPIToken = false
 
 	// Add the default service account for the ns into the cache
 	admit.serviceAccounts.Add(&api.ServiceAccount{
@@ -490,7 +459,6 @@ func TestDoNotAddImagePullSecrets(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.LimitSecretReferences = true
-	admit.RequireAPIToken = false
 
 	// Add the default service account for the ns with a secret reference into the cache
 	admit.serviceAccounts.Add(&api.ServiceAccount{
@@ -525,7 +493,6 @@ func TestAddImagePullSecrets(t *testing.T) {
 
 	admit := NewServiceAccount(nil)
 	admit.LimitSecretReferences = true
-	admit.RequireAPIToken = false
 
 	sa := &api.ServiceAccount{
 		ObjectMeta: api.ObjectMeta{

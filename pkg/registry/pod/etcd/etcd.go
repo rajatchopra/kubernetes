@@ -203,6 +203,9 @@ func (r *StatusREST) Update(ctx api.Context, obj runtime.Object) (runtime.Object
 	return r.store.Update(ctx, obj)
 }
 
+// Implement GetterWithOptions
+var _ = rest.GetterWithOptions(&LogREST{})
+
 // LogREST implements the log endpoint for a Pod
 type LogREST struct {
 	store       *etcdgeneric.Etcd
@@ -280,8 +283,7 @@ func (r *ProxyREST) Connect(ctx api.Context, id string, opts runtime.Object) (re
 	return genericrest.NewUpgradeAwareProxyHandler(location, nil, false), nil
 }
 
-// Support both GET and POST methods. Over time, we want to move all clients to start using POST and then stop supporting GET.
-var upgradeableMethods = []string{"GET", "POST"}
+var upgradeableMethods = []string{"GET"}
 
 // ExecREST implements the exec subresource for a Pod
 type ExecREST struct {

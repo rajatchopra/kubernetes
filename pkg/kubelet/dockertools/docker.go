@@ -21,7 +21,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 
@@ -43,7 +42,6 @@ const (
 	PodInfraContainerName  = leaky.PodInfraContainerName
 	DockerPrefix           = "docker://"
 	PodInfraContainerImage = "gcr.io/google_containers/pause:0.8.0"
-	LogSuffix              = "log"
 )
 
 const (
@@ -278,10 +276,6 @@ func ParseDockerName(name string) (dockerName *KubeletContainerName, hash uint64
 	return &KubeletContainerName{podFullName, podUID, containerName}, hash, nil
 }
 
-func LogSymlink(containerLogsDir, podFullName, containerName, dockerId string) string {
-	return path.Join(containerLogsDir, fmt.Sprintf("%s_%s-%s.%s", podFullName, containerName, dockerId, LogSuffix))
-}
-
 // Get a docker endpoint, either from the string passed in, or $DOCKER_HOST environment variables
 func getDockerEndpoint(dockerEndpoint string) string {
 	var endpoint string
@@ -312,10 +306,8 @@ func ConnectToDockerOrDie(dockerEndpoint string) DockerInterface {
 
 func milliCPUToShares(milliCPU int64) int64 {
 	if milliCPU == 0 {
-		// Docker converts zero milliCPU to unset, which maps to kernel default
-		// for unset: 1024. Return 2 here to really match kernel default for
-		// zero milliCPU.
-		return minShares
+		// zero milliCPU means unset. Use kernel default.
+		return 0
 	}
 	// Conceptually (milliCPU / milliCPUToCPU) * sharesPerCPU, but factored to improve rounding.
 	shares := (milliCPU * sharesPerCPU) / milliCPUToCPU

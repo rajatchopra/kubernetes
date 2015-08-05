@@ -9,6 +9,9 @@
   },
   "spec": {
     "replicas": 2,
+    "selector": {
+      "name": "meteor"
+    },
     "template": {
       "metadata": {
         "labels": {
@@ -23,9 +26,12 @@
             "ports": [
               {
                 "name": "http-server",
-                "containerPort": 8080
+                "hostPort": 80,
+                "containerPort": 8080,
+                "protocol": "TCP"
               }
-            ]
+            ],
+            "resources": {}
           }
         ]
       }

@@ -1,15 +1,10 @@
-<!-- BEGIN MUNGE: UNVERSIONED_WARNING -->
-
-
-<!-- END MUNGE: UNVERSIONED_WARNING -->
-
 # Design Principles
 
 Principles to follow when extending Kubernetes. 
 
 ## API
 
-See also the [API conventions](../devel/api-conventions.md).
+See also the [API conventions](../api-conventions.md).
 
 * All APIs should be declarative.
 * API objects should be complementary and composable, not opaque wrappers.
@@ -60,11 +55,4 @@ TODO
 * [Eric Raymond's 17 UNIX rules](https://en.wikipedia.org/wiki/Unix_philosophy#Eric_Raymond.E2.80.99s_17_Unix_Rules)
 
 
-<!-- BEGIN MUNGE: IS_VERSIONED -->
-<!-- TAG IS_VERSIONED -->
-<!-- END MUNGE: IS_VERSIONED -->
-
-
-<!-- BEGIN MUNGE: GENERATED_ANALYTICS -->
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/docs/design/principles.md?pixel)]()
-<!-- END MUNGE: GENERATED_ANALYTICS -->

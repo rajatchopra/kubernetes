@@ -118,6 +118,7 @@ func NewAPIServer() *APIServer {
 		AuthorizationMode:      "AlwaysAllow",
 		AdmissionControl:       "AlwaysAdmit",
 		EtcdPathPrefix:         master.DefaultEtcdPathPrefix,
+		OldEtcdPathPrefix:      master.DefaultEtcdPathPrefix,
 		EnableLogsSupport:      true,
 		MasterServiceNamespace: api.NamespaceDefault,
 		ClusterName:            "kubernetes",
@@ -275,6 +276,7 @@ func (s *APIServer) Run(_ []string) error {
 	}
 
 	// "api/legacy=false" allows users to disable legacy api versions.
+	// Right now, v1beta1 and v1beta2 are considered legacy.
 	disableLegacyAPIs := false
 	legacyAPIFlagValue, ok := s.RuntimeConfig["api/legacy"]
 	if ok && legacyAPIFlagValue == "false" {
@@ -282,8 +284,10 @@ func (s *APIServer) Run(_ []string) error {
 	}
 	_ = disableLegacyAPIs // hush the compiler while we don't have legacy APIs to disable.
 
-	// v1beta3 is disabled by default. Users can enable it using "api/v1beta3=true"
-	enableV1beta3 := s.getRuntimeConfigValue("api/v1beta3", false)
+	// "api/v1beta3={true|false} allows users to enable/disable v1beta3 API.
+	// This takes preference over api/all and api/legacy, if specified.
+	disableV1beta3 := disableAllAPIs
+	disableV1beta3 = !s.getRuntimeConfigValue("api/v1beta3", !disableV1beta3)
 
 	// "api/v1={true|false} allows users to enable/disable v1 API.
 	// This takes preference over api/all and api/legacy, if specified.
@@ -384,7 +388,7 @@ func (s *APIServer) Run(_ []string) error {
 		SupportsBasicAuth:      len(s.BasicAuthFile) > 0,
 		Authorizer:             authorizer,
 		AdmissionControl:       admissionController,
-		EnableV1Beta3:          enableV1beta3,
+		DisableV1Beta3:         disableV1beta3,
 		DisableV1:              disableV1,
 		MasterServiceNamespace: s.MasterServiceNamespace,
 		ClusterName:            s.ClusterName,
@@ -446,11 +450,7 @@ func (s *APIServer) Run(_ []string) error {
 					s.TLSCertFile = path.Join(s.CertDirectory, "apiserver.crt")
 					s.TLSPrivateKeyFile = path.Join(s.CertDirectory, "apiserver.key")
 					// TODO (cjcullen): Is PublicAddress the right address to sign a cert with?
-					alternateIPs := []net.IP{config.ServiceReadWriteIP}
-					alternateDNS := []string{"kubernetes.default.svc", "kubernetes.default", "kubernetes"}
-					// It would be nice to set a fqdn subject alt name, but only the kubelets know, the apiserver is clueless
-					// alternateDNS = append(alternateDNS, "kubernetes.default.svc.CLUSTER.DNS.NAME")
-					if err := util.GenerateSelfSignedCert(config.PublicAddress.String(), s.TLSCertFile, s.TLSPrivateKeyFile, alternateIPs, alternateDNS); err != nil {
+					if err := util.GenerateSelfSignedCert(config.PublicAddress.String(), s.TLSCertFile, s.TLSPrivateKeyFile); err != nil {
 						glog.Errorf("Unable to generate self signed cert: %v", err)
 					} else {
 						glog.Infof("Using self-signed cert (%s, %s)", s.TLSCertFile, s.TLSPrivateKeyFile)

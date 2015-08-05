@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"sort"
 	"strconv"
 	"sync"
@@ -42,9 +41,6 @@ import (
 
 // NodeStartupThreshold is a rough estimate of the time allocated for a pod to start on a node.
 const NodeStartupThreshold = 4 * time.Second
-
-// Maximum container failures this test tolerates before failing.
-var MaxContainerFailures = 0
 
 // podLatencyData encapsulates pod startup latency information.
 type podLatencyData struct {
@@ -68,20 +64,6 @@ func printLatencies(latencies []podLatencyData, header string) {
 	perc99 := latencies[(len(latencies)*99)/100].Latency
 	Logf("10%% %s: %v", header, latencies[(len(latencies)*9)/10:len(latencies)])
 	Logf("perc50: %v, perc90: %v, perc99: %v", perc50, perc90, perc99)
-}
-
-// List nodes via gcloud. We don't rely on the apiserver because we really want the node ips
-// and sometimes the node controller is slow to populate them.
-func gcloudListNodes() {
-	Logf("Listing nodes via gcloud:")
-	output, err := exec.Command("gcloud", "compute", "instances", "list",
-		"--project="+testContext.CloudConfig.ProjectID, "--zone="+testContext.CloudConfig.Zone).CombinedOutput()
-	if err != nil {
-		Logf("Failed to list nodes: %v, %v", err)
-		return
-	}
-	Logf(string(output))
-	return
 }
 
 // This test suite can take a long time to run, so by default it is added to
@@ -119,7 +101,6 @@ var _ = Describe("Density", func() {
 		expectNoError(resetMetrics(c))
 		expectNoError(os.Mkdir(fmt.Sprintf(testContext.OutputDir+"/%s", uuid), 0777))
 		expectNoError(writePerfData(c, fmt.Sprintf(testContext.OutputDir+"/%s", uuid), "before"))
-		gcloudListNodes()
 	})
 
 	AfterEach(func() {
@@ -193,14 +174,14 @@ var _ = Describe("Density", func() {
 			fileHndl, err := os.Create(fmt.Sprintf(testContext.OutputDir+"/%s/pod_states.csv", uuid))
 			expectNoError(err)
 			defer fileHndl.Close()
+
 			config := RCConfig{Client: c,
-				Image:                "gcr.io/google_containers/pause:go",
-				Name:                 RCName,
-				Namespace:            ns,
-				PollInterval:         itArg.interval,
-				PodStatusFile:        fileHndl,
-				Replicas:             totalPods,
-				MaxContainerFailures: &MaxContainerFailures,
+				Image:         "gcr.io/google_containers/pause:go",
+				Name:          RCName,
+				Namespace:     ns,
+				PollInterval:  itArg.interval,
+				PodStatusFile: fileHndl,
+				Replicas:      totalPods,
 			}
 
 			// Create a listener for events.

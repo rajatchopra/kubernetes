@@ -32,18 +32,15 @@ import (
 )
 
 type sourceURL struct {
-	url         string
-	header      http.Header
-	nodeName    string
-	updates     chan<- interface{}
-	data        []byte
-	failureLogs int
+	url      string
+	nodeName string
+	updates  chan<- interface{}
+	data     []byte
 }
 
-func NewSourceURL(url string, header http.Header, nodeName string, period time.Duration, updates chan<- interface{}) {
+func NewSourceURL(url, nodeName string, period time.Duration, updates chan<- interface{}) {
 	config := &sourceURL{
 		url:      url,
-		header:   header,
 		nodeName: nodeName,
 		updates:  updates,
 		data:     nil,
@@ -54,19 +51,7 @@ func NewSourceURL(url string, header http.Header, nodeName string, period time.D
 
 func (s *sourceURL) run() {
 	if err := s.extractFromURL(); err != nil {
-		// Don't log this multiple times per minute. The first few entries should be
-		// enough to get the point across.
-		if s.failureLogs < 3 {
-			glog.Warningf("Failed to read pods from URL: %v", err)
-		} else if s.failureLogs == 3 {
-			glog.Warningf("Failed to read pods from URL. Won't log this message anymore: %v", err)
-		}
-		s.failureLogs++
-	} else {
-		if s.failureLogs > 0 {
-			glog.Info("Successfully read pods from URL.")
-			s.failureLogs = 0
-		}
+		glog.Errorf("Failed to read URL: %v", err)
 	}
 }
 
@@ -75,13 +60,7 @@ func (s *sourceURL) applyDefaults(pod *api.Pod) error {
 }
 
 func (s *sourceURL) extractFromURL() error {
-	req, err := http.NewRequest("GET", s.url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header = s.header
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.Get(s.url)
 	if err != nil {
 		return err
 	}

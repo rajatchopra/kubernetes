@@ -22,7 +22,8 @@ import (
 )
 
 func TestBasicThrottle(t *testing.T) {
-	r := NewTokenBucketRateLimiter(1, 3)
+	ticker := make(chan time.Time, 1)
+	r := newTokenBucketRateLimiterFromTicker(ticker, 3)
 	for i := 0; i < 3; i++ {
 		if !r.CanAccept() {
 			t.Error("unexpected false accept")
@@ -34,19 +35,29 @@ func TestBasicThrottle(t *testing.T) {
 }
 
 func TestIncrementThrottle(t *testing.T) {
-	r := NewTokenBucketRateLimiter(1, 1)
+	ticker := make(chan time.Time, 1)
+	r := newTokenBucketRateLimiterFromTicker(ticker, 1)
 	if !r.CanAccept() {
 		t.Error("unexpected false accept")
 	}
 	if r.CanAccept() {
 		t.Error("unexpected true accept")
 	}
-
-	// Allow to refill
-	time.Sleep(2 * time.Second)
+	ticker <- time.Now()
+	r.step()
 
 	if !r.CanAccept() {
 		t.Error("unexpected false accept")
+	}
+}
+
+func TestOverBurst(t *testing.T) {
+	ticker := make(chan time.Time, 1)
+	r := newTokenBucketRateLimiterFromTicker(ticker, 3)
+
+	for i := 0; i < 4; i++ {
+		ticker <- time.Now()
+		r.step()
 	}
 }
 

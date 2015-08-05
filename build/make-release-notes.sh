@@ -27,8 +27,7 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
 if [[ -z "${1:-}" ]]; then
-  echo "Usage: ${0} <last-release-pr-number> <current-release-pr-number> --api-token=$TOKEN [opts]"
-  echo "To create a GitHub API token, see https://github.com/settings/tokens"
+  echo "Usage: ${0} <pr-number> [opts]"
   exit 1
 fi
 
@@ -37,7 +36,6 @@ trap 'pop_dir' INT TERM EXIT
 
 kube::golang::build_binaries contrib/release-notes
 kube::golang::place_bins
-echo "Fetching release notes"
 releasenotes=$(kube::util::find-binary "release-notes")
-"${releasenotes}" --last-release-pr=${1} --current-release-pr=${2} ${@}
+"${releasenotes}" --last-release-pr=${1} ${@}
 

@@ -112,12 +112,8 @@ func (md *MasterDetector) childrenChanged(zkc *Client, path string, obs detector
 		return
 	}
 
-	md.notifyMasterChanged(path, list, obs)
-	md.notifyAllMasters(path, list, obs)
-}
-
-func (md *MasterDetector) notifyMasterChanged(path string, list []string, obs detector.MasterChanged) {
 	topNode := selectTopNode(list)
+
 	if md.leaderNode == topNode {
 		log.V(2).Infof("ignoring children-changed event, leader has not changed: %v", path)
 		return
@@ -128,57 +124,21 @@ func (md *MasterDetector) notifyMasterChanged(path string, list []string, obs de
 
 	var masterInfo *mesos.MasterInfo
 	if md.leaderNode != "" {
-		var err error
-		if masterInfo, err = md.pullMasterInfo(path, topNode); err != nil {
-			log.Errorln(err.Error())
+		data, err := zkc.data(fmt.Sprintf("%s/%s", path, topNode))
+		if err != nil {
+			log.Errorf("unable to retrieve leader data: %v", err.Error())
+			return
+		}
+
+		masterInfo = new(mesos.MasterInfo)
+		err = proto.Unmarshal(data, masterInfo)
+		if err != nil {
+			log.Errorf("unable to unmarshall MasterInfo data from zookeeper: %v", err)
+			return
 		}
 	}
 	log.V(2).Infof("detected master info: %+v", masterInfo)
-	logPanic(func() { obs.OnMasterChanged(masterInfo) })
-}
-
-// logPanic safely executes the given func, recovering from and logging a panic if one occurs.
-func logPanic(f func()) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Errorf("recovered from client panic: %v", r)
-		}
-	}()
-	f()
-}
-
-func (md *MasterDetector) pullMasterInfo(path, node string) (*mesos.MasterInfo, error) {
-	data, err := md.client.data(fmt.Sprintf("%s/%s", path, node))
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve leader data: %v", err)
-	}
-
-	masterInfo := &mesos.MasterInfo{}
-	err = proto.Unmarshal(data, masterInfo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshall MasterInfo data from zookeeper: %v", err)
-	}
-	return masterInfo, nil
-}
-
-func (md *MasterDetector) notifyAllMasters(path string, list []string, obs detector.MasterChanged) {
-	all, ok := obs.(detector.AllMasters)
-	if !ok {
-		// not interested in entire master list
-		return
-	}
-	masters := []*mesos.MasterInfo{}
-	for _, node := range list {
-		info, err := md.pullMasterInfo(path, node)
-		if err != nil {
-			log.Errorln(err.Error())
-		} else {
-			masters = append(masters, info)
-		}
-	}
-
-	log.V(2).Infof("notifying of master membership change: %+v", masters)
-	logPanic(func() { all.UpdatedMasters(masters) })
+	obs.OnMasterChanged(masterInfo)
 }
 
 // the first call to Detect will kickstart a connection to zookeeper. a nil change listener may

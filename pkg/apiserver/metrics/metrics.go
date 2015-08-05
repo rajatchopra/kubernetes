@@ -48,8 +48,6 @@ var (
 		prometheus.SummaryOpts{
 			Name: "apiserver_request_latencies_summary",
 			Help: "Response latency summary in microseconds for each verb and resource.",
-			// Make the sliding window of 1h.
-			MaxAge: time.Hour,
 		},
 		[]string{"verb", "resource"},
 	)

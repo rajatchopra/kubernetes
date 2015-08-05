@@ -131,9 +131,9 @@ func (g *APIGroupVersion) InstallREST(container *restful.Container) error {
 
 // TODO: document all handlers
 // InstallSupport registers the APIServer support functions
-func InstallSupport(mux Mux, ws *restful.WebService, enableResettingMetrics bool, checks ...healthz.HealthzChecker) {
+func InstallSupport(mux Mux, ws *restful.WebService, enableResettingMetrics bool) {
 	// TODO: convert healthz and metrics to restful and remove container arg
-	healthz.InstallHandler(mux, checks...)
+	healthz.InstallHandler(mux)
 	mux.Handle("/metrics", prometheus.Handler())
 	if enableResettingMetrics {
 		mux.HandleFunc("/resetMetrics", metrics.Reset)

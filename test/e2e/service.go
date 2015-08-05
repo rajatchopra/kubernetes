@@ -245,12 +245,8 @@ var _ = Describe("Services", func() {
 			}
 		}()
 
-		inboundPort := 3000
-
 		service := t.BuildServiceSpec()
 		service.Spec.Type = api.ServiceTypeLoadBalancer
-		service.Spec.Ports[0].Port = inboundPort
-		service.Spec.Ports[0].TargetPort = util.NewIntOrStringFromInt(80)
 
 		By("creating service " + serviceName + " with external load balancer in namespace " + ns)
 		result, err := t.CreateService(service)
@@ -282,7 +278,7 @@ var _ = Describe("Services", func() {
 		testReachable(pickMinionIP(c), port.NodePort)
 
 		By("hitting the pod through the service's external load balancer")
-		testLoadBalancerReachable(ingress, inboundPort)
+		testLoadBalancerReachable(ingress, 80)
 	})
 
 	It("should be able to create a functioning NodePort service", func() {
@@ -331,9 +327,6 @@ var _ = Describe("Services", func() {
 	})
 
 	It("should be able to change the type and nodeport settings of a service", func() {
-		// requires ExternalLoadBalancer
-		SkipUnlessProviderIs("gce", "gke", "aws")
-
 		serviceName := "mutability-service-test"
 		ns := namespaces[0]
 
@@ -497,9 +490,6 @@ var _ = Describe("Services", func() {
 	})
 
 	It("should release the load balancer when Type goes from LoadBalancer -> NodePort", func() {
-		// requires ExternalLoadBalancer
-		SkipUnlessProviderIs("gce", "gke", "aws")
-
 		serviceName := "service-release-lb"
 		ns := namespaces[0]
 
@@ -904,28 +894,29 @@ func validatePortsOrFail(endpoints map[string][]int, expectedEndpoints map[strin
 	}
 }
 
-func validateEndpointsOrFail(c *client.Client, namespace, serviceName string, expectedEndpoints map[string][]int) {
-	By(fmt.Sprintf("Waiting up to %v for service %s in namespace %s to expose endpoints %v", serviceStartTimeout, serviceName, namespace, expectedEndpoints))
-	for start := time.Now(); time.Since(start) < serviceStartTimeout; time.Sleep(5 * time.Second) {
-		endpoints, err := c.Endpoints(namespace).Get(serviceName)
-		if err != nil {
-			Logf("Get endpoints failed (%v elapsed, ignoring for 5s): %v", time.Since(start), err)
-			continue
-		}
-		Logf("Found endpoints %v", endpoints)
+func validateEndpointsOrFail(c *client.Client, ns, serviceName string, expectedEndpoints map[string][]int) {
+	By(fmt.Sprintf("Validating endpoints %v with on service %s/%s", expectedEndpoints, ns, serviceName))
+	for {
+		endpoints, err := c.Endpoints(ns).Get(serviceName)
+		if err == nil {
+			By(fmt.Sprintf("Found endpoints %v", endpoints))
 
-		portsByIp := getPortsByIp(endpoints.Subsets)
-		Logf("Found ports by ip %v", portsByIp)
+			portsByIp := getPortsByIp(endpoints.Subsets)
 
-		if len(portsByIp) == len(expectedEndpoints) {
-			expectedPortsByIp := translatePodNameToIpOrFail(c, namespace, expectedEndpoints)
-			validatePortsOrFail(portsByIp, expectedPortsByIp)
-			By(fmt.Sprintf("Successfully validated that service %s in namespace %s exposes endpoints %v (%v elapsed)", serviceName, namespace, expectedEndpoints, time.Since(start)))
-			return
+			By(fmt.Sprintf("Found ports by ip %v", portsByIp))
+			if len(portsByIp) == len(expectedEndpoints) {
+				expectedPortsByIp := translatePodNameToIpOrFail(c, ns, expectedEndpoints)
+				validatePortsOrFail(portsByIp, expectedPortsByIp)
+				break
+			} else {
+				By(fmt.Sprintf("Unexpected number of endpoints: found %v, expected %v (ignoring for 1 second)", portsByIp, expectedEndpoints))
+			}
+		} else {
+			By(fmt.Sprintf("Failed to get endpoints: %v (ignoring for 1 second)", err))
 		}
-		Logf("Unexpected number of endpoints: found %v, expected %v (%v elapsed, ignoring for 5s)", portsByIp, expectedEndpoints, time.Since(start))
+		time.Sleep(time.Second)
 	}
-	Failf("Timed out waiting for service %s in namespace %s to expose endpoints %v (%v elapsed)", serviceName, namespace, expectedEndpoints, serviceStartTimeout)
+	By(fmt.Sprintf("successfully validated endpoints %v with on service %s/%s", expectedEndpoints, ns, serviceName))
 }
 
 func addEndpointPodOrFail(c *client.Client, ns, name string, labels map[string]string, containerPorts []api.ContainerPort) {
@@ -1013,10 +1004,9 @@ func testReachable(ip string, port int) {
 		Failf("Got port==0 for reachability check (%s)", url)
 	}
 
-	desc := fmt.Sprintf("the url %s to be reachable", url)
-	By(fmt.Sprintf("Waiting up to %v for %s", podStartTimeout, desc))
+	By(fmt.Sprintf("Waiting up to %v for %s to be reachable", podStartTimeout, url))
 	start := time.Now()
-	err := wait.Poll(poll, podStartTimeout, func() (bool, error) {
+	expectNoError(wait.Poll(poll, podStartTimeout, func() (bool, error) {
 		resp, err := httpGetNoConnectionPool(url)
 		if err != nil {
 			Logf("Got error waiting for reachability of %s: %v (%v)", url, err, time.Since(start))
@@ -1036,8 +1026,7 @@ func testReachable(ip string, port int) {
 		}
 		Logf("Successfully reached %v", url)
 		return true, nil
-	})
-	Expect(err).NotTo(HaveOccurred(), "Error waiting for %s", desc)
+	}))
 }
 
 func testNotReachable(ip string, port int) {
@@ -1049,12 +1038,11 @@ func testNotReachable(ip string, port int) {
 		Failf("Got port==0 for non-reachability check (%s)", url)
 	}
 
-	desc := fmt.Sprintf("the url %s to be *not* reachable", url)
-	By(fmt.Sprintf("Waiting up to %v for %s", podStartTimeout, desc))
-	err := wait.Poll(poll, podStartTimeout, func() (bool, error) {
+	By(fmt.Sprintf("Waiting up to %v for %s to be *not* reachable", podStartTimeout, url))
+	expectNoError(wait.Poll(poll, podStartTimeout, func() (bool, error) {
 		resp, err := httpGetNoConnectionPool(url)
 		if err != nil {
-			Logf("Successfully waited for %s", desc)
+			Logf("Successfully waited for the url %s to be unreachable.", url)
 			return true, nil
 		}
 		defer resp.Body.Close()
@@ -1065,8 +1053,7 @@ func testNotReachable(ip string, port int) {
 		}
 		Logf("Able to reach service %s when should no longer have been reachable, status:%d and body: %s", url, resp.Status, string(body))
 		return false, nil
-	})
-	Expect(err).NotTo(HaveOccurred(), "Error waiting for %s", desc)
+	}))
 }
 
 // Does an HTTP GET, but does not reuse TCP connections

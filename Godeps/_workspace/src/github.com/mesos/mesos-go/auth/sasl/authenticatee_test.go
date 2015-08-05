@@ -65,27 +65,26 @@ func TestAuthticatee_validLogin(t *testing.T) {
 		transport.On("Stop").Return(nil)
 		transport.On("Send", mock.Anything, &server, &mesos.AuthenticateMessage{
 			Pid: proto.String(client.String()),
-		}).Return(nil).Run(func(_ mock.Arguments) {
-			transport.Recv(&server, &mesos.AuthenticationMechanismsMessage{
-				Mechanisms: []string{crammd5.Name},
-			})
-		}).Once()
+		}).Return(nil).Once()
 
 		transport.On("Send", mock.Anything, &server, &mesos.AuthenticationStartMessage{
 			Mechanism: proto.String(crammd5.Name),
 			Data:      proto.String(""), // may be nil, depends on init step
-		}).Return(nil).Run(func(_ mock.Arguments) {
-			transport.Recv(&server, &mesos.AuthenticationStepMessage{
-				Data: []byte(`lsd;lfkgjs;dlfkgjs;dfklg`),
-			})
-		}).Once()
+		}).Return(nil).Once()
 
 		transport.On("Send", mock.Anything, &server, &mesos.AuthenticationStepMessage{
 			Data: []byte(`foo cc7fd96cd80123ea844a7dba29a594ed`),
-		}).Return(nil).Run(func(_ mock.Arguments) {
-			transport.Recv(&server, &mesos.AuthenticationCompletedMessage{})
-		}).Once()
+		}).Return(nil).Once()
 
+		go func() {
+			transport.Recv(&server, &mesos.AuthenticationMechanismsMessage{
+				Mechanisms: []string{crammd5.Name},
+			})
+			transport.Recv(&server, &mesos.AuthenticationStepMessage{
+				Data: []byte(`lsd;lfkgjs;dlfkgjs;dfklg`),
+			})
+			transport.Recv(&server, &mesos.AuthenticationCompletedMessage{})
+		}()
 		return transport
 	})
 	login, err := makeAuthenticatee(handler, factory)

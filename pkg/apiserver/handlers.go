@@ -125,8 +125,6 @@ func RecoverPanics(handler http.Handler) http.Handler {
 				http.StatusTemporaryRedirect,
 				http.StatusConflict,
 				http.StatusNotFound,
-				http.StatusUnauthorized,
-				http.StatusForbidden,
 				errors.StatusUnprocessableEntity,
 				http.StatusSwitchingProtocols,
 			),

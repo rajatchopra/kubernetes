@@ -31,7 +31,6 @@ var (
 			Subsystem: restClientSubsystem,
 			Name:      "request_latency_microseconds",
 			Help:      "Request latency in microseconds. Broken down by verb and URL",
-			MaxAge:    time.Hour,
 		},
 		[]string{"verb", "url"},
 	)

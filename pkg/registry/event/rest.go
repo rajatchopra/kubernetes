@@ -45,7 +45,7 @@ func NewStorage(registry generic.Registry) *REST {
 func (rs *REST) Create(ctx api.Context, obj runtime.Object) (runtime.Object, error) {
 	event, ok := obj.(*api.Event)
 	if !ok {
-		return nil, errors.NewInternalError(fmt.Errorf("received object is not of type event: %#v", obj))
+		return nil, fmt.Errorf("invalid object type")
 	}
 	if api.NamespaceValue(ctx) != "" {
 		if !api.ValidNamespace(ctx, &event.ObjectMeta) {
@@ -68,8 +68,7 @@ func (rs *REST) Create(ctx api.Context, obj runtime.Object) (runtime.Object, err
 func (rs *REST) Update(ctx api.Context, obj runtime.Object) (runtime.Object, bool, error) {
 	event, ok := obj.(*api.Event)
 	if !ok {
-		return nil, false, errors.NewInternalError(fmt.Errorf("received object is not of type event: %#v", obj))
-
+		return nil, false, fmt.Errorf("not an event object: %#v", obj)
 	}
 	if api.NamespaceValue(ctx) != "" {
 		if !api.ValidNamespace(ctx, &event.ObjectMeta) {
@@ -96,19 +95,19 @@ func (rs *REST) Delete(ctx api.Context, name string) (runtime.Object, error) {
 	}
 	_, ok := obj.(*api.Event)
 	if !ok {
-		return nil, errors.NewInternalError(fmt.Errorf("stored object %s is not of type event: %#v", name, obj))
+		return nil, fmt.Errorf("invalid object type")
 	}
 	return rs.registry.Delete(ctx, name, nil)
 }
 
-func (rs *REST) Get(ctx api.Context, name string) (runtime.Object, error) {
-	obj, err := rs.registry.Get(ctx, name)
+func (rs *REST) Get(ctx api.Context, id string) (runtime.Object, error) {
+	obj, err := rs.registry.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	event, ok := obj.(*api.Event)
 	if !ok {
-		return nil, errors.NewInternalError(fmt.Errorf("stored object %s is not of type event: %#v", name, obj))
+		return nil, fmt.Errorf("invalid object type")
 	}
 	return event, err
 }
@@ -116,7 +115,7 @@ func (rs *REST) Get(ctx api.Context, name string) (runtime.Object, error) {
 func (rs *REST) getAttrs(obj runtime.Object) (objLabels labels.Set, objFields fields.Set, err error) {
 	event, ok := obj.(*api.Event)
 	if !ok {
-		return nil, nil, errors.NewInternalError(fmt.Errorf("object is not of type event: %#v", obj))
+		return nil, nil, fmt.Errorf("invalid object type")
 	}
 	l := event.Labels
 	if l == nil {

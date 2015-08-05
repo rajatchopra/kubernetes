@@ -74,7 +74,7 @@ Supported environments offer the following config flags, which are used at
 cluster turn-up to create the SkyDNS pods and configure the kubelets.  For
 example, see `cluster/gce/config-default.sh`.
 
-```sh
+```shell
 ENABLE_CLUSTER_DNS=true
 DNS_SERVER_IP="10.0.0.10"
 DNS_DOMAIN="cluster.local"
@@ -109,7 +109,7 @@ Create a file named busybox.yaml with the
 following contents:
 
 ```yaml
-apiVersion: v1
+apiVersion: v1beta3
 kind: Pod
 metadata:
   name: busybox

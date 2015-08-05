@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -238,9 +237,9 @@ func TestWatchChildren_flappy(t *testing.T) {
 	}))
 
 	go c.connect()
-	var watchChildrenCount uint64
+	watchChildrenCount := 0
 	watcherFunc := ChildWatcher(func(zkc *Client, path string) {
-		log.V(1).Infof("ChildWatcher invoked %d", atomic.LoadUint64(&watchChildrenCount))
+		log.V(1).Infof("ChildWatcher invoked %d", watchChildrenCount)
 	})
 	startTime := time.Now()
 	endTime := startTime.Add(2 * time.Second)
@@ -253,7 +252,7 @@ watcherLoop:
 			if _, err := c.watchChildren(currentPath, watcherFunc); err == nil {
 				// watching children succeeded!!
 				t.Logf("child watch success")
-				atomic.AddUint64(&watchChildrenCount, 1)
+				watchChildrenCount++
 			} else {
 				// setting the watch failed
 				t.Logf("setting child watch failed: %v", err)
@@ -265,9 +264,7 @@ watcherLoop:
 		case <-time.After(endTime.Sub(time.Now())):
 		}
 	}
-
-	wantChildrenCount := atomic.LoadUint64(&watchChildrenCount)
-	assert.Equal(t, uint64(5), wantChildrenCount, "expected watchChildrenCount = 5 instead of %d, should be reinvoked upon initial ChildrenW failures", wantChildrenCount)
+	assert.Equal(t, 5, watchChildrenCount, "expected watchChildrenCount = 5 instead of %d, should be reinvoked upon initial ChildrenW failures", watchChildrenCount)
 }
 
 func makeClient() (*Client, error) {

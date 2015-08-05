@@ -237,18 +237,18 @@ type TestUnknownType struct{}
 
 func (*TestUnknownType) IsAnAPIObject() {}
 
-func PrintCustomType(obj *TestPrintType, w io.Writer, withNamespace bool, wide bool, columnLabels []string) error {
+func PrintCustomType(obj *TestPrintType, w io.Writer, withNamespace bool, columnLabels []string) error {
 	_, err := fmt.Fprintf(w, "%s", obj.Data)
 	return err
 }
 
-func ErrorPrintHandler(obj *TestPrintType, w io.Writer, withNamespace bool, wide bool, columnLabels []string) error {
+func ErrorPrintHandler(obj *TestPrintType, w io.Writer, withNamespace bool, columnLabels []string) error {
 	return fmt.Errorf("ErrorPrintHandler error")
 }
 
 func TestCustomTypePrinting(t *testing.T) {
 	columns := []string{"Data"}
-	printer := NewHumanReadablePrinter(false, false, false, []string{})
+	printer := NewHumanReadablePrinter(false, false, []string{})
 	printer.Handler(columns, PrintCustomType)
 
 	obj := TestPrintType{"test object"}
@@ -265,7 +265,7 @@ func TestCustomTypePrinting(t *testing.T) {
 
 func TestPrintHandlerError(t *testing.T) {
 	columns := []string{"Data"}
-	printer := NewHumanReadablePrinter(false, false, false, []string{})
+	printer := NewHumanReadablePrinter(false, false, []string{})
 	printer.Handler(columns, ErrorPrintHandler)
 	obj := TestPrintType{"test object"}
 	buffer := &bytes.Buffer{}
@@ -276,7 +276,7 @@ func TestPrintHandlerError(t *testing.T) {
 }
 
 func TestUnknownTypePrinting(t *testing.T) {
-	printer := NewHumanReadablePrinter(false, false, false, []string{})
+	printer := NewHumanReadablePrinter(false, false, []string{})
 	buffer := &bytes.Buffer{}
 	err := printer.PrintObj(&TestUnknownType{}, buffer)
 	if err == nil {
@@ -452,8 +452,8 @@ func TestPrinters(t *testing.T) {
 		t.Fatal(err)
 	}
 	printers := map[string]ResourcePrinter{
-		"humanReadable":        NewHumanReadablePrinter(true, false, false, []string{}),
-		"humanReadableHeaders": NewHumanReadablePrinter(false, false, false, []string{}),
+		"humanReadable":        NewHumanReadablePrinter(true, false, []string{}),
+		"humanReadableHeaders": NewHumanReadablePrinter(false, false, []string{}),
 		"json":                 &JSONPrinter{},
 		"yaml":                 &YAMLPrinter{},
 		"template":             templatePrinter,
@@ -490,7 +490,7 @@ func TestPrinters(t *testing.T) {
 
 func TestPrintEventsResultSorted(t *testing.T) {
 	// Arrange
-	printer := NewHumanReadablePrinter(false /* noHeaders */, false, false, []string{})
+	printer := NewHumanReadablePrinter(false /* noHeaders */, false, []string{})
 
 	obj := api.EventList{
 		Items: []api.Event{
@@ -531,7 +531,7 @@ func TestPrintEventsResultSorted(t *testing.T) {
 }
 
 func TestPrintMinionStatus(t *testing.T) {
-	printer := NewHumanReadablePrinter(false, false, false, []string{})
+	printer := NewHumanReadablePrinter(false, false, []string{})
 	table := []struct {
 		minion api.Node
 		status string
@@ -739,7 +739,7 @@ func TestPrintHumanReadableService(t *testing.T) {
 
 	for _, svc := range tests {
 		buff := bytes.Buffer{}
-		printService(&svc, &buff, false, false, []string{})
+		printService(&svc, &buff, false, []string{})
 		output := string(buff.Bytes())
 		ip := svc.Spec.ClusterIP
 		if !strings.Contains(output, ip) {
@@ -774,14 +774,14 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 	namespaceName := "testnamespace"
 	name := "test"
 	table := []struct {
-		obj          runtime.Object
-		isNamespaced bool
+		obj            runtime.Object
+		printNamespace bool
 	}{
 		{
 			obj: &api.Pod{
 				ObjectMeta: api.ObjectMeta{Name: name, Namespace: namespaceName},
 			},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.ReplicationController{
@@ -812,7 +812,7 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 					},
 				},
 			},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.Service{
@@ -836,7 +836,7 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 					},
 				},
 			},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.Endpoints{
@@ -846,47 +846,47 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 					Ports:     []api.EndpointPort{{Port: 8080}},
 				},
 				}},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.Namespace{
 				ObjectMeta: api.ObjectMeta{Name: name},
 			},
-			isNamespaced: false,
+			printNamespace: false,
 		},
 		{
 			obj: &api.Secret{
 				ObjectMeta: api.ObjectMeta{Name: name, Namespace: namespaceName},
 			},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.ServiceAccount{
 				ObjectMeta: api.ObjectMeta{Name: name, Namespace: namespaceName},
 				Secrets:    []api.ObjectReference{},
 			},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.Node{
 				ObjectMeta: api.ObjectMeta{Name: name},
 				Status:     api.NodeStatus{},
 			},
-			isNamespaced: false,
+			printNamespace: false,
 		},
 		{
 			obj: &api.PersistentVolume{
 				ObjectMeta: api.ObjectMeta{Name: name, Namespace: namespaceName},
 				Spec:       api.PersistentVolumeSpec{},
 			},
-			isNamespaced: false,
+			printNamespace: true,
 		},
 		{
 			obj: &api.PersistentVolumeClaim{
 				ObjectMeta: api.ObjectMeta{Name: name, Namespace: namespaceName},
 				Spec:       api.PersistentVolumeClaimSpec{},
 			},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.Event{
@@ -897,19 +897,19 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 				LastTimestamp:  util.NewTime(time.Date(2014, time.January, 15, 0, 0, 0, 0, time.UTC)),
 				Count:          1,
 			},
-			isNamespaced: true,
+			printNamespace: false,
 		},
 		{
 			obj: &api.LimitRange{
 				ObjectMeta: api.ObjectMeta{Name: name, Namespace: namespaceName},
 			},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.ResourceQuota{
 				ObjectMeta: api.ObjectMeta{Name: name, Namespace: namespaceName},
 			},
-			isNamespaced: true,
+			printNamespace: true,
 		},
 		{
 			obj: &api.ComponentStatus{
@@ -917,31 +917,35 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 					{Type: api.ComponentHealthy, Status: api.ConditionTrue, Message: "ok", Error: ""},
 				},
 			},
-			isNamespaced: false,
+			printNamespace: false,
 		},
 	}
 
+	printer := NewHumanReadablePrinter(false, false, []string{})
 	for _, test := range table {
-		if test.isNamespaced {
-			// Expect output to include namespace when requested.
-			printer := NewHumanReadablePrinter(false, true, false, []string{})
-			buffer := &bytes.Buffer{}
-			err := printer.PrintObj(test.obj, buffer)
-			if err != nil {
-				t.Fatalf("An error occurred printing object: %#v", err)
-			}
-			matched := contains(strings.Fields(buffer.String()), fmt.Sprintf("%s", namespaceName))
-			if !matched {
-				t.Errorf("Expect printing object to contain namespace: %#v", test.obj)
-			}
-		} else {
-			// Expect error when trying to get all namespaces for un-namespaced object.
-			printer := NewHumanReadablePrinter(false, true, false, []string{})
-			buffer := &bytes.Buffer{}
-			err := printer.PrintObj(test.obj, buffer)
-			if err == nil {
-				t.Errorf("Expected error when printing un-namespaced type")
-			}
+		buffer := &bytes.Buffer{}
+		err := printer.PrintObj(test.obj, buffer)
+		if err != nil {
+			t.Fatalf("An error occurred printing object: %#v", err)
+		}
+		matched := contains(strings.Fields(buffer.String()), fmt.Sprintf("%s/%s", namespaceName, name))
+		if matched {
+			t.Errorf("Expect printing object not to contain namespace: %v", test.obj)
+		}
+	}
+
+	printer = NewHumanReadablePrinter(false, true, []string{})
+	for _, test := range table {
+		buffer := &bytes.Buffer{}
+		err := printer.PrintObj(test.obj, buffer)
+		if err != nil {
+			t.Fatalf("An error occurred printing object: %#v", err)
+		}
+		matched := contains(strings.Fields(buffer.String()), fmt.Sprintf("%s/%s", namespaceName, name))
+		if test.printNamespace && !matched {
+			t.Errorf("Expect printing object to contain namespace: %v", test.obj)
+		} else if !test.printNamespace && matched {
+			t.Errorf("Expect printing object not to contain namespace: %v", test.obj)
 		}
 	}
 }
@@ -1031,7 +1035,7 @@ func TestPrintPod(t *testing.T) {
 
 	buf := bytes.NewBuffer([]byte{})
 	for _, test := range tests {
-		printPod(&test.pod, buf, false, false, []string{})
+		printPod(&test.pod, buf, false, []string{})
 		// We ignore time
 		if !strings.HasPrefix(buf.String(), test.expect) {
 			t.Fatalf("Expected: %s, got: %s", test.expect, buf.String())
@@ -1091,7 +1095,7 @@ func TestPrintPodWithLabels(t *testing.T) {
 
 	buf := bytes.NewBuffer([]byte{})
 	for _, test := range tests {
-		printPod(&test.pod, buf, false, false, test.labelColumns)
+		printPod(&test.pod, buf, false, test.labelColumns)
 		// We ignore time
 		if !strings.HasPrefix(buf.String(), test.startsWith) || !strings.HasSuffix(buf.String(), test.endsWith) {
 			t.Fatalf("Expected to start with: %s and end with: %s, but got: %s", test.startsWith, test.endsWith, buf.String())

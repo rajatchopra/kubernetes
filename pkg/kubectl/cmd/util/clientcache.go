@@ -17,7 +17,6 @@ limitations under the License.
 package util
 
 import (
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/registered"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
 )
@@ -37,7 +36,6 @@ type clientCache struct {
 	clients       map[string]*client.Client
 	configs       map[string]*client.Config
 	defaultConfig *client.Config
-	defaultClient *client.Client
 	matchVersion  bool
 }
 
@@ -50,7 +48,7 @@ func (c *clientCache) ClientConfigForVersion(version string) (*client.Config, er
 		}
 		c.defaultConfig = config
 		if c.matchVersion {
-			if err := client.MatchesServerVersion(c.defaultClient, config); err != nil {
+			if err := client.MatchesServerVersion(config); err != nil {
 				return nil, err
 			}
 		}
@@ -60,7 +58,7 @@ func (c *clientCache) ClientConfigForVersion(version string) (*client.Config, er
 	}
 	// TODO: have a better config copy method
 	config := *c.defaultConfig
-	negotiatedVersion, err := client.NegotiateVersion(c.defaultClient, &config, version, registered.RegisteredVersions)
+	negotiatedVersion, err := client.NegotiateVersion(&config, version)
 	if err != nil {
 		return nil, err
 	}

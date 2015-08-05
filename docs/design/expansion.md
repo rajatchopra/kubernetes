@@ -1,8 +1,3 @@
-<!-- BEGIN MUNGE: UNVERSIONED_WARNING -->
-
-
-<!-- END MUNGE: UNVERSIONED_WARNING -->
-
 # Variable expansion in pod command, args, and env
 
 ## Abstract
@@ -66,7 +61,7 @@ script that sets up the environment and runs the command.  This has a number of 
 
 1.  Solutions that require a shell are unfriendly to images that do not contain a shell
 2.  Wrapper scripts make it harder to use images as base images
-3.  Wrapper scripts increase coupling to Kubernetes
+3.  Wrapper scripts increase coupling to kubernetes
 
 Users should be able to do the 80% case of variable expansion in command without writing a wrapper
 script or adding a shell invocation to their containers' commands.
@@ -390,12 +385,4 @@ spec:
   restartPolicy: Never
 ```
 
-
-<!-- BEGIN MUNGE: IS_VERSIONED -->
-<!-- TAG IS_VERSIONED -->
-<!-- END MUNGE: IS_VERSIONED -->
-
-
-<!-- BEGIN MUNGE: GENERATED_ANALYTICS -->
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/docs/design/expansion.md?pixel)]()
-<!-- END MUNGE: GENERATED_ANALYTICS -->

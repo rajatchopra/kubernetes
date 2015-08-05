@@ -32,9 +32,9 @@ app.controller('ListReplicationControllersCtrl', [
       selector: 'grey',
       replicas: 'grey'
     };
-    $scope.sortable = ['controller', 'containers', 'images', 'selector', 'replicas'];
+    $scope.sortable = ['controller', 'containers', 'images'];
     $scope.thumbs = 'thumb';
-    $scope.count = 50;
+    $scope.count = 10;
 
     $scope.go = function(data) { $location.path('/dashboard/replicationcontrollers/' + data.controller); };
 

@@ -33,6 +33,9 @@ MINION_CPU=1
 
 SERVICE_CLUSTER_IP_RANGE="10.244.240.0/20"  # formerly PORTAL_NET
 
+# Optional: Install node monitoring.
+ENABLE_NODE_MONITORING=true
+
 # Optional: Enable node logging.
 ENABLE_NODE_LOGGING=false
 LOGGING_DESTINATION=elasticsearch

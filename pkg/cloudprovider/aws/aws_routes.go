@@ -85,14 +85,9 @@ func (s *AWSCloud) configureInstanceSourceDestCheck(instanceID string, sourceDes
 // CreateRoute implements Routes.CreateRoute
 // Create the described route
 func (s *AWSCloud) CreateRoute(clusterName string, nameHint string, route *cloudprovider.Route) error {
-	instance, err := s.getInstanceByNodeName(route.TargetInstance)
-	if err != nil {
-		return err
-	}
-
 	// In addition to configuring the route itself, we also need to configure the instance to accept that traffic
 	// On AWS, this requires turning source-dest checks off
-	err = s.configureInstanceSourceDestCheck(orEmpty(instance.InstanceID), false)
+	err := s.configureInstanceSourceDestCheck(route.TargetInstance, false)
 	if err != nil {
 		return err
 	}
@@ -105,7 +100,7 @@ func (s *AWSCloud) CreateRoute(clusterName string, nameHint string, route *cloud
 	request := &ec2.CreateRouteInput{}
 	// TODO: use ClientToken for idempotency?
 	request.DestinationCIDRBlock = aws.String(route.DestinationCIDR)
-	request.InstanceID = instance.InstanceID
+	request.InstanceID = aws.String(route.TargetInstance)
 	request.RouteTableID = table.RouteTableID
 
 	_, err = s.ec2.CreateRoute(request)

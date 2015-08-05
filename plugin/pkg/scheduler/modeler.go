@@ -191,7 +191,5 @@ type simpleModelerPods struct {
 
 // List returns pods known and assumed to exist.
 func (s simpleModelerPods) List(selector labels.Selector) (pods []*api.Pod, err error) {
-	s.simpleModeler.LockedAction(
-		func() { pods, err = s.simpleModeler.listPods(selector) })
-	return
+	return s.simpleModeler.listPods(selector)
 }

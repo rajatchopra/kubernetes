@@ -24,7 +24,6 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util/wait"
 	"strings"
-	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -43,44 +42,27 @@ func countRemaining(c *client.Client, withName string) (int, error) {
 }
 
 func extinguish(c *client.Client, totalNS int, maxAllowedAfterDel int, maxSeconds int) {
+
 	var err error
 
-	By("Creating testing namespaces")
-	wg := &sync.WaitGroup{}
 	for n := 0; n < totalNS; n += 1 {
-		wg.Add(1)
-		go func(n int) {
-			defer wg.Done()
-			defer GinkgoRecover()
-			_, err = createTestingNS(fmt.Sprintf("nslifetest-%v", n), c)
-			Expect(err).NotTo(HaveOccurred())
-		}(n)
+		_, err = createTestingNS(fmt.Sprintf("nslifetest-%v", n), c)
+		Expect(err).NotTo(HaveOccurred())
 	}
-	wg.Wait()
 
-	By("Waiting 10 seconds")
 	//Wait 10 seconds, then SEND delete requests for all the namespaces.
 	time.Sleep(time.Duration(10 * time.Second))
-	By("Deleting namespaces")
 	nsList, err := c.Namespaces().List(labels.Everything(), fields.Everything())
 	Expect(err).NotTo(HaveOccurred())
-	var nsCount = 0
 	for _, item := range nsList.Items {
 		if strings.Contains(item.Name, "nslifetest") {
-			wg.Add(1)
-			nsCount++
-			go func(nsName string) {
-				defer wg.Done()
-				defer GinkgoRecover()
-				Expect(c.Namespaces().Delete(nsName)).To(Succeed())
-				Logf("namespace : %v api call to delete is complete ", nsName)
-			}(item.Name)
+			if err := c.Namespaces().Delete(item.Name); err != nil {
+				Failf("Failed deleting error ::: --- %v ", err)
+			}
 		}
+		Logf("namespace : %v api call to delete is complete ", item)
 	}
-	Expect(nsCount).To(Equal(totalNS))
-	wg.Wait()
 
-	By("Waiting for namespaces to vanish")
 	//Now POLL until all namespaces have been eradicated.
 	expectNoError(wait.Poll(2*time.Second, time.Duration(maxSeconds)*time.Second,
 		func() (bool, error) {

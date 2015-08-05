@@ -18,11 +18,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
-source "${KUBE_ROOT}/hack/lib/init.sh"
-
-kube::golang::setup_env
-
 function generate_version() {
 	local version=$1
 	local TMPFILE="/tmp/conversion_generated.$(date +%s).go"
@@ -54,8 +49,6 @@ EOF
 }
 
 VERSIONS="v1beta3 v1"
-for ver in $VERSIONS; do
-  # Ensure that the version being processed is registered by setting
-  # KUBE_API_VERSIONS.
-  KUBE_API_VERSIONS="${ver}" generate_version "${ver}"
+for ver in $VERSIONS; do 
+	generate_version "${ver}"
 done

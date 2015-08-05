@@ -37,7 +37,6 @@ var _ = Describe("ServiceAccounts", func() {
 	It("should mount an API token into pods", func() {
 		var tokenName string
 		var tokenContent string
-		var rootCAContent string
 
 		// Standard get, update retry loop
 		expectNoError(wait.Poll(time.Millisecond*500, time.Second*10, func() (bool, error) {
@@ -55,7 +54,6 @@ var _ = Describe("ServiceAccounts", func() {
 			}
 			tokenName = secrets.Items[0].Name
 			tokenContent = string(secrets.Items[0].Data[api.ServiceAccountTokenKey])
-			rootCAContent = string(secrets.Items[0].Data[api.ServiceAccountRootCAKey])
 			return true, nil
 		}))
 
@@ -66,17 +64,10 @@ var _ = Describe("ServiceAccounts", func() {
 			Spec: api.PodSpec{
 				Containers: []api.Container{
 					{
-						Name:  "token-test",
+						Name:  "service-account-test",
 						Image: "gcr.io/google_containers/mounttest:0.2",
 						Args: []string{
 							fmt.Sprintf("--file_content=%s/%s", serviceaccount.DefaultAPITokenMountPath, api.ServiceAccountTokenKey),
-						},
-					},
-					{
-						Name:  "root-ca-test",
-						Image: "gcr.io/google_containers/mounttest:0.2",
-						Args: []string{
-							fmt.Sprintf("--file_content=%s/%s", serviceaccount.DefaultAPITokenMountPath, api.ServiceAccountRootCAKey),
 						},
 					},
 				},
@@ -86,9 +77,6 @@ var _ = Describe("ServiceAccounts", func() {
 
 		f.TestContainerOutput("consume service account token", pod, 0, []string{
 			fmt.Sprintf(`content of file "%s/%s": %s`, serviceaccount.DefaultAPITokenMountPath, api.ServiceAccountTokenKey, tokenContent),
-		})
-		f.TestContainerOutput("consume service account root CA", pod, 1, []string{
-			fmt.Sprintf(`content of file "%s/%s": %s`, serviceaccount.DefaultAPITokenMountPath, api.ServiceAccountRootCAKey, rootCAContent),
 		})
 	})
 })

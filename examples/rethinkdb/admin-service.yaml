@@ -4,6 +4,7 @@ metadata:
   labels:
     db: influxdb
   name: rethinkdb-admin
+  namespace: rethinkdb
 spec:
   ports:
    - port: 8080

@@ -21,7 +21,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -163,7 +162,7 @@ func makeCheckPod(ns string, nfsserver string) *api.Pod {
 	return &api.Pod{
 		TypeMeta: api.TypeMeta{
 			Kind:       "Pod",
-			APIVersion: testapi.Version(),
+			APIVersion: "v1beta3",
 		},
 		ObjectMeta: api.ObjectMeta{
 			GenerateName: "checker-",

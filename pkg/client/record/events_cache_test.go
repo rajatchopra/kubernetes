@@ -173,7 +173,7 @@ func compareEventWithHistoryEntry(expected *api.Event, actual *history, t *testi
 		t.Fatalf("There should be one existing instance of this event in the hash table.")
 	}
 
-	if !actual.FirstTimestamp.Equal(expected.FirstTimestamp) {
+	if !actual.FirstTimestamp.Equal(expected.FirstTimestamp.Time) {
 		t.Fatalf("Unexpected FirstTimestamp. Expected: <%v> Actual: <%v>", expected.FirstTimestamp, actual.FirstTimestamp)
 	}
 

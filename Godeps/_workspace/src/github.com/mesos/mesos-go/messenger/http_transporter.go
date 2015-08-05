@@ -21,6 +21,7 @@ package messenger
 import (
 	"bytes"
 	"fmt"
+	"github.com/mesos/mesos-go/upid"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -32,7 +33,6 @@ import (
 	"time"
 
 	log "github.com/golang/glog"
-	"github.com/mesos/mesos-go/upid"
 	"golang.org/x/net/context"
 )
 
@@ -235,14 +235,7 @@ func (t *HTTPTransporter) listen() error {
 	} else {
 		host = t.upid.Host
 	}
-
-	var port string
-	if t.upid.Port != "" {
-		port = t.upid.Port
-	} else {
-		port = "0"
-	}
-
+	port := t.upid.Port
 	// NOTE: Explicitly specifies IPv4 because Libprocess
 	// only supports IPv4 for now.
 	ln, err := net.Listen("tcp4", net.JoinHostPort(host, port))
@@ -252,15 +245,7 @@ func (t *HTTPTransporter) listen() error {
 	}
 	// Save the host:port in case they are not specified in upid.
 	host, port, _ = net.SplitHostPort(ln.Addr().String())
-
-	if len(t.upid.Host) == 0 {
-		t.upid.Host = host
-	}
-
-	if len(t.upid.Port) == 0 || t.upid.Port == "0" {
-		t.upid.Port = port
-	}
-
+	t.upid.Host, t.upid.Port = host, port
 	t.listener = ln
 	return nil
 }

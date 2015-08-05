@@ -24,9 +24,9 @@ app.controller('ListMinionsCtrl', [
       status: 'grey',
       ip: 'grey'
     };
-    $scope.sortable = ['name', 'status', 'addresses'];
+    $scope.sortable = ['name', 'status', 'ip'];
     $scope.thumbs = 'thumb';
-    $scope.count = 50;
+    $scope.count = 10;
 
     $scope.go = function(d) { $location.path('/dashboard/nodes/' + d.name); };
 

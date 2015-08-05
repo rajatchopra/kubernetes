@@ -123,8 +123,7 @@ func (*NativeExecHandler) ExecInContainer(client DockerInterface, container *doc
 	if err != nil {
 		return err
 	}
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
+	tick := time.Tick(2 * time.Second)
 	count := 0
 	for {
 		inspect, err2 := client.InspectExec(execObj.ID)
@@ -144,7 +143,7 @@ func (*NativeExecHandler) ExecInContainer(client DockerInterface, container *doc
 			break
 		}
 
-		<-ticker.C
+		<-tick
 	}
 
 	return err

@@ -24,7 +24,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/capabilities"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	utilerrors "github.com/GoogleCloudPlatform/kubernetes/pkg/util/errors"
@@ -557,7 +556,7 @@ func TestValidateEnv(t *testing.T) {
 			Name: "abc",
 			ValueFrom: &api.EnvVarSource{
 				FieldRef: &api.ObjectFieldSelector{
-					APIVersion: testapi.Version(),
+					APIVersion: "v1beta3",
 					FieldPath:  "metadata.name",
 				},
 			},
@@ -589,7 +588,7 @@ func TestValidateEnv(t *testing.T) {
 				Value: "foo",
 				ValueFrom: &api.EnvVarSource{
 					FieldRef: &api.ObjectFieldSelector{
-						APIVersion: testapi.Version(),
+						APIVersion: "v1beta3",
 						FieldPath:  "metadata.name",
 					},
 				},
@@ -602,7 +601,7 @@ func TestValidateEnv(t *testing.T) {
 				Name: "abc",
 				ValueFrom: &api.EnvVarSource{
 					FieldRef: &api.ObjectFieldSelector{
-						APIVersion: testapi.Version(),
+						APIVersion: "v1beta3",
 					},
 				},
 			}},
@@ -627,7 +626,7 @@ func TestValidateEnv(t *testing.T) {
 				ValueFrom: &api.EnvVarSource{
 					FieldRef: &api.ObjectFieldSelector{
 						FieldPath:  "metadata.whoops",
-						APIVersion: testapi.Version(),
+						APIVersion: "v1beta3",
 					},
 				},
 			}},
@@ -640,7 +639,7 @@ func TestValidateEnv(t *testing.T) {
 				ValueFrom: &api.EnvVarSource{
 					FieldRef: &api.ObjectFieldSelector{
 						FieldPath:  "status.phase",
-						APIVersion: testapi.Version(),
+						APIVersion: "v1beta3",
 					},
 				},
 			}},
@@ -1832,16 +1831,6 @@ func TestValidateService(t *testing.T) {
 				s.Spec.Ports = append(s.Spec.Ports, api.ServicePort{Name: "q", Port: 12345, Protocol: "TCP", TargetPort: util.NewIntOrStringFromInt(12345)})
 			},
 			numErrs: 0,
-		},
-		{
-			// For now we open firewalls, and its insecure if we open 10250, remove this
-			// when we have better protections in place.
-			name: "invalid port type=LoadBalancer",
-			tweakSvc: func(s *api.Service) {
-				s.Spec.Type = api.ServiceTypeLoadBalancer
-				s.Spec.Ports = append(s.Spec.Ports, api.ServicePort{Name: "kubelet", Port: 10250, Protocol: "TCP", TargetPort: util.NewIntOrStringFromInt(12345)})
-			},
-			numErrs: 1,
 		},
 	}
 

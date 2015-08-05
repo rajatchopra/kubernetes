@@ -2,7 +2,6 @@ base:
   '*':
     - base
     - debian-auto-upgrades
-    - salt-helpers
 
   'roles:kubernetes-pool':
     - match: grain
@@ -12,10 +11,8 @@ base:
 {% endif %}
     - helpers
     - cadvisor
-    - kube-client-tools
     - kubelet
     - kube-proxy
-#   - contrail-vrouter
 {% if pillar.get('enable_node_logging', '').lower() == 'true' and pillar['logging_destination'] is defined %}
   {% if pillar['logging_destination'] == 'elasticsearch' %}
     - fluentd-es
@@ -34,14 +31,6 @@ base:
     - kube-controller-manager
     - kube-scheduler
     - monit
-    - contrail-apiserver
-    - contrail-cassandra
-    - contrail-ifmap-server
-    - contrail-rabbitmq
-    - contrail-schema
-    - contrail-zookeeper
-    - contrail-control
-    - contrail-kube-network-manager
 {% if grains['cloud'] is defined and not grains.cloud in [ 'aws', 'gce', 'vagrant' ] %}
     - nginx
 {% endif %}
@@ -49,13 +38,6 @@ base:
     - kube-client-tools
     - kube-master-addons
     - kube-admission-controls
-{% if pillar.get('enable_node_logging', '').lower() == 'true' and pillar['logging_destination'] is defined %}
-  {% if pillar['logging_destination'] == 'elasticsearch' %}
-    - fluentd-es
-  {% elif pillar['logging_destination'] == 'gcp' %}
-    - fluentd-gcp
-  {% endif %}
-{% endif %}
 {% if grains['cloud'] is defined and grains['cloud'] != 'vagrant' %}
     - logrotate
 {% endif %}

@@ -20,12 +20,10 @@ import (
 	"mime"
 	"net/http"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/ui/data/swagger"
-
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 )
 
-const dashboardPath = "/api/v1/proxy/namespaces/kube-system/services/kube-ui/#/dashboard/"
+const dashboardPath = "/static/app/#/dashboard/"
 
 type MuxInterface interface {
 	Handle(pattern string, handler http.Handler)
@@ -39,19 +37,18 @@ func InstallSupport(mux MuxInterface, enableSwaggerSupport bool) {
 	// makes it into all of our supported go versions.
 	mime.AddExtensionType(".svg", "image/svg+xml")
 
-	// Redirect /ui to the kube-ui proxy path
-	prefix := "/ui/"
+	// Expose files in www/ on <host>/static/
+	fileServer := http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, Prefix: "www"})
+	prefix := "/static/"
+	mux.Handle(prefix, http.StripPrefix(prefix, fileServer))
+	prefix = "/ui/"
 	mux.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, dashboardPath, http.StatusTemporaryRedirect)
 	})
 
 	if enableSwaggerSupport {
 		// Expose files in third_party/swagger-ui/ on <host>/swagger-ui
-		fileServer := http.FileServer(&assetfs.AssetFS{
-			Asset:    swagger.Asset,
-			AssetDir: swagger.AssetDir,
-			Prefix:   "third_party/swagger-ui",
-		})
+		fileServer = http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, Prefix: "third_party/swagger-ui"})
 		prefix = "/swagger-ui/"
 		mux.Handle(prefix, http.StripPrefix(prefix, fileServer))
 	}
