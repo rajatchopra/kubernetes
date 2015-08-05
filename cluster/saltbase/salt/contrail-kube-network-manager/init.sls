@@ -1,6 +1,6 @@
 /etc/kubernetes/manifests/contrail-kube-network-manager.manifest:
   file.managed:
-    - source: https://github.com/pedro-r-marques/contrail-kubernetes/blob/manifests/cluster/kube-network-manager.manifest
+    - source: https://raw.githubusercontent.com/pedro-r-marques/contrail-kubernetes/manifests/cluster/kube-network-manager.manifest
     - user: root
     - group: root
     - mode: 644

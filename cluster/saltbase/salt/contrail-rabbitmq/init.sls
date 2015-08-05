@@ -1,6 +1,6 @@
 /etc/kubernetes/manifests/contrail-rabbitmq.manifest:
   file.managed:
-    - source: https://github.com/pedro-r-marques/contrail-kubernetes/blob/manifests/cluster/rabbitmq.manifest
+    - source: https://raw.githubusercontent.com/pedro-r-marques/contrail-kubernetes/manifests/cluster/rabbitmq.manifest
     - user: root
     - group: root
     - mode: 644
