@@ -1341,3 +1341,9 @@ func (r *runtime) RemoveImage(image kubecontainer.ImageSpec) error {
 	}
 	return nil
 }
+
+func (r *runtime) GetNetNs(containerID string) (string, error) {
+	// TODO: get network namespace
+	err := fmt.Errorf("TODO: GetNetNs method not implemented")
+	return "", err
+}

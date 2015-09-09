@@ -312,3 +312,7 @@ func (f *FakeRuntime) PortForward(pod *Pod, port uint16, stream io.ReadWriteClos
 	f.CalledFunctions = append(f.CalledFunctions, "PortForward")
 	return f.Err
 }
+
+func (f *FakeRuntime) GetNetNs(containerID string) (string, error) {
+	return "", nil
+}

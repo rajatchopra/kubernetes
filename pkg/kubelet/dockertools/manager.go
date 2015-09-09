@@ -73,6 +73,8 @@ const (
 	kubernetesPodLabel                    = "io.kubernetes.pod.data"
 	kubernetesTerminationGracePeriodLabel = "io.kubernetes.pod.terminationGracePeriod"
 	kubernetesContainerLabel              = "io.kubernetes.container.name"
+
+	DockerNetnsFmt = "/proc/%v/ns/net"
 )
 
 // DockerManager implements the Runtime interface.
@@ -1925,4 +1927,15 @@ func getPidMode(pod *api.Pod) string {
 		pidMode = "host"
 	}
 	return pidMode
+}
+
+// GetNetNs returns the network namespace path for the given container
+func (dm *DockerManager) GetNetNs(containerID string) (string, error) {
+	inspectResult, err := dm.client.InspectContainer(string(containerID))
+	if err != nil {
+		glog.Errorf("Error inspecting container: '%v'", err)
+		return "", err
+	}
+	netnsPath := fmt.Sprintf(DockerNetnsFmt, inspectResult.State.Pid)
+	return netnsPath, nil
 }
